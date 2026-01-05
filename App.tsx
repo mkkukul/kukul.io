@@ -173,7 +173,7 @@ const App: React.FC = () => {
               <div className="relative">
                  <div className="absolute -inset-1 bg-brand-500 rounded-full blur opacity-25 group-hover:opacity-50 transition-opacity"></div>
                  <img 
-                     src="https://api.dicebear.com/9.x/bottts/svg?seed=KukulAI&backgroundColor=e0f2fe" 
+                     src="/android-chrome-192x192.png" 
                      alt="Kukul.io" 
                      className="w-16 h-16 rounded-full border-2 border-white shadow-lg object-cover relative z-10 bg-white transition-transform group-hover:scale-105"
                  />
@@ -182,7 +182,7 @@ const App: React.FC = () => {
                 <h1 className="text-2xl font-black text-slate-800 tracking-tight group-hover:text-brand-700 transition-colors">
                     Kukul.io
                 </h1>
-                <p className="text-[10px] text-slate-500 font-bold tracking-widest uppercase">LGS Performans Analisti</p>
+                <p className="text-[10px] text-slate-500 font-bold tracking-widest uppercase">Eğitim ve Veri Analisti</p>
               </div>
             </div>
           </div>
@@ -194,9 +194,9 @@ const App: React.FC = () => {
           {appState === AppState.IDLE && (
              <div className="w-full max-w-3xl mx-auto text-center mb-8 animate-fade-in-up">
                 <h2 className="text-4xl md:text-5xl font-black text-slate-800 tracking-tight mb-2">
-                  LGS Hazırlığında <span className="text-brand-600">Nokta Atışı</span> Yapın
+                  Sınav ve Ödevlerinizde <span className="text-brand-600">Nokta Atışı</span> Yapın
                 </h2>
-                <p className="text-slate-600 mt-4 text-lg">Sınav sonucunu yükle, yapay zeka senin için analiz etsin, eksiklerini bulsun ve çalışma planını hazırlasın.</p>
+                <p className="text-slate-600 mt-4 text-lg">Ödevini veya sınav sonucunu yükle, yapay zeka senin için analiz etsin, eksiklerini bulsun ve çalışma planını hazırlasın.</p>
              </div>
           )}
 
