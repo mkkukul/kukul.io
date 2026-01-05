@@ -1,19 +1,19 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SYSTEM_PROMPT } from "../constants";
 import { ComprehensiveAnalysis } from "../types";
+import { AppConfig, validateConfig } from "../config";
 
-// Using gemini-3-flash-preview.
-// API Key is accessed directly from process.env.API_KEY.
-if (!process.env.API_KEY) {
-    console.error("Critical Error: API_KEY is missing in the environment variables.");
-}
-
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Initialize the client helper
+const getClient = () => {
+    validateConfig();
+    return new GoogleGenAI({ apiKey: AppConfig.gemini.apiKey });
+};
 
 export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<ComprehensiveAnalysis> => {
   const logPrefix = "[GeminiService]";
   
   try {
+    const ai = getClient();
     const parts = [];
 
     console.group(`${logPrefix} Starting Analysis`);
@@ -60,22 +60,22 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
     // Add system prompt at the end
     parts.push({ text: SYSTEM_PROMPT });
 
-    console.log(`${logPrefix} Sending request to Gemini API (gemini-3-flash-preview)...`);
+    console.log(`${logPrefix} Sending request to Gemini API (${AppConfig.gemini.modelName})...`);
     const startTime = Date.now();
 
     // --- 2. API Call ---
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: AppConfig.gemini.modelName,
       contents: {
         parts: parts
       },
       config: {
         // Temperature 0 ensures the model is deterministic (stable) on the same input.
-        temperature: 0.0,
+        temperature: AppConfig.gemini.generationConfig.temperature,
         // Increase maxOutputTokens to accommodate large JSON responses.
-        maxOutputTokens: 32768,
+        maxOutputTokens: AppConfig.gemini.generationConfig.maxOutputTokens,
         // High thinking budget for complex analysis
-        thinkingConfig: { thinkingBudget: 10240 }, 
+        thinkingConfig: { thinkingBudget: AppConfig.gemini.generationConfig.thinkingBudget }, 
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
