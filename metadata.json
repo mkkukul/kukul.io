@@ -1,0 +1,5 @@
+{
+  "name": "AI Sınav Analisti",
+  "description": "Yapay zeka destekli sınav ve ödev analiz aracı. Kağıdınızın fotoğrafını yükleyin, detaylı konu analizi ve başarı raporu alın.",
+  "requestFramePermissions": []
+}

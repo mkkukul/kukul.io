@@ -1,0 +1,292 @@
+import { GoogleGenAI, Type } from "@google/genai";
+import { SYSTEM_PROMPT } from "../constants";
+import { ComprehensiveAnalysis } from "../types";
+
+// Using gemini-3-flash-preview.
+// API Key is accessed directly from process.env.API_KEY.
+if (!process.env.API_KEY) {
+    console.error("Critical Error: API_KEY is missing in the environment variables.");
+}
+
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<ComprehensiveAnalysis> => {
+  const logPrefix = "[GeminiService]";
+  
+  try {
+    const parts = [];
+
+    console.group(`${logPrefix} Starting Analysis`);
+    console.log(`Files to process: ${base64DataUrls.length}`);
+
+    // --- 1. Pre-flight Validation & Logging ---
+    const debugFileStats = base64DataUrls.map((url, index) => {
+        const mimeMatch = url.match(/^data:(.+?);base64,/);
+        const mimeType = mimeMatch ? mimeMatch[1] : 'unknown';
+        const dataLength = url.length;
+        const sizeInKB = Math.round((dataLength * 3) / 4 / 1024); // approx base64 size
+
+        return {
+            fileIndex: index + 1,
+            mimeType,
+            sizeKB: `${sizeInKB} KB`,
+            isValidFormat: !!mimeMatch,
+            dataPreview: url.substring(0, 50) + "..."
+        };
+    });
+
+    console.table(debugFileStats);
+
+    // Add all images/PDFs to the prompt parts
+    for (const [index, base64Url] of base64DataUrls.entries()) {
+        const match = base64Url.match(/^data:(.+?);base64,(.+)$/);
+        if (match) {
+            parts.push({
+                inlineData: {
+                    mimeType: match[1],
+                    data: match[2]
+                }
+            });
+        } else {
+            console.error(`${logPrefix} File at index ${index} has invalid base64 format.`);
+            throw new Error(`Dosya #${index + 1} formatı hatalı. Lütfen tekrar yükleyin.`);
+        }
+    }
+
+    if (parts.length === 0) {
+        throw new Error("Geçerli dosya verisi bulunamadı. Lütfen yüklediğiniz dosyaların formatını kontrol edin.");
+    }
+
+    // Add system prompt at the end
+    parts.push({ text: SYSTEM_PROMPT });
+
+    console.log(`${logPrefix} Sending request to Gemini API (gemini-3-flash-preview)...`);
+    const startTime = Date.now();
+
+    // --- 2. API Call ---
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: {
+        parts: parts
+      },
+      config: {
+        // Temperature 0 ensures the model is deterministic (stable) on the same input.
+        temperature: 0.0,
+        // Increase maxOutputTokens to accommodate large JSON responses.
+        maxOutputTokens: 32768,
+        // High thinking budget for complex analysis
+        thinkingConfig: { thinkingBudget: 10240 }, 
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            ogrenci_bilgi: { 
+                type: Type.OBJECT, 
+                properties: { 
+                    ad_soyad: { type: Type.STRING }, 
+                    sube: { type: Type.STRING }, 
+                    numara: { type: Type.STRING } 
+                },
+                required: ["ad_soyad"]
+            },
+            executive_summary: {
+                type: Type.OBJECT,
+                properties: {
+                    mevcut_durum: { type: Type.STRING, description: "Markdown formatında, öğrencinin durumunu 4 ana başlık altında en az 400 kelime ile anlatan çok detaylı rapor." },
+                    guclu_yonler: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    zayif_yonler: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    lgs_tahmini_yuzdelik: { type: Type.NUMBER }
+                },
+                required: ["mevcut_durum", "guclu_yonler", "zayif_yonler", "lgs_tahmini_yuzdelik"]
+            },
+            exams_history: {
+                type: Type.ARRAY,
+                items: {
+                    type: Type.OBJECT,
+                    properties: {
+                        sinav_adi: { type: Type.STRING },
+                        yayin_evi: { type: Type.STRING },
+                        tarih: { type: Type.STRING },
+                        toplam_puan: { type: Type.NUMBER },
+                        genel_yuzdelik: { type: Type.NUMBER },
+                        ders_netleri: { 
+                           type: Type.ARRAY, 
+                           items: { 
+                             type: Type.OBJECT,
+                             properties: {
+                                ders: { type: Type.STRING },
+                                net: { type: Type.NUMBER }
+                             },
+                             required: ["ders", "net"]
+                           } 
+                        }
+                    },
+                    required: ["sinav_adi", "ders_netleri", "toplam_puan"]
+                }
+            },
+            konu_analizi: {
+                type: Type.ARRAY,
+                description: "Belgede yer alan konu analiz tablosunun BİREBİR, EKSİKSİZ, SATIR SATIR dökümü. Asla özetleme yapılmamalı, kağıtta ne yazıyorsa o çekilmelidir.",
+                items: {
+                    type: Type.OBJECT,
+                    properties: {
+                        ders: { type: Type.STRING },
+                        konu: { type: Type.STRING },
+                        dogru: { type: Type.NUMBER },
+                        yanlis: { type: Type.NUMBER },
+                        bos: { type: Type.NUMBER },
+                        basari_yuzdesi: { type: Type.NUMBER },
+                        lgs_kayip_puan: { type: Type.NUMBER },
+                        durum: { type: Type.STRING, description: "Kritik (<%50), Geliştirilmeli (%50-%70), İyi (%70-%80), Mükemmel (>%80)" }
+                    },
+                    required: ["ders", "konu", "lgs_kayip_puan", "durum"]
+                }
+            },
+            kiyaslama: {
+                type: Type.OBJECT,
+                properties: {
+                    ogrenci_genel_net: { type: Type.NUMBER },
+                    sinif_ort_net: { type: Type.NUMBER },
+                    okul_ort_net: { type: Type.NUMBER },
+                    genel_ort_net: { type: Type.NUMBER }
+                }
+            },
+            calisma_plani: {
+                type: Type.ARRAY,
+                description: "Öğrencinin girdiği sınavdaki HER BİR DERS için ayrı ayrı oluşturulmuş stratejik tavsiye listesi.",
+                items: {
+                    type: Type.OBJECT,
+                    properties: {
+                        konu: { type: Type.STRING },
+                        ders: { type: Type.STRING },
+                        sebep: { type: Type.STRING },
+                        tavsiye: { type: Type.STRING, description: "3-4 maddelik; her maddede kaynak, süre ve uygulanacak tekniği içeren somut eylem planı." },
+                        oncelik: { type: Type.NUMBER }
+                    },
+                    required: ["konu", "tavsiye", "oncelik", "sebep"]
+                }
+            },
+            simulasyon: {
+                type: Type.OBJECT,
+                description: "Matematiksel hesaplamaya dayalı gelecek projeksiyonu.",
+                properties: {
+                    senaryo: { type: Type.STRING, description: "Genel özet metni." },
+                    hedef_yuzdelik: { type: Type.NUMBER },
+                    hedef_puan: { type: Type.NUMBER, description: "Simülasyon gerçekleşirse oluşacak tahmini LGS puanı (Örn: 425.5)" },
+                    puan_araligi: { type: Type.STRING, description: "Puanın olası aralığı (Örn: '420 - 430')" },
+                    gerekli_net_artisi: { type: Type.STRING },
+                    gelisim_adimlari: {
+                        type: Type.ARRAY,
+                        description: "KESİNLİKLE SIRASIYLA (Matematik -> Türkçe -> Fen -> İnkılap -> İngilizce -> Din) şeklinde 6 maddelik gelişim planı.",
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                baslik: { type: Type.STRING, description: "Örn: Matematik - İşlem Hızı" },
+                                ne_yapmali: { type: Type.STRING },
+                                nasil_yapmali: { type: Type.STRING },
+                                sure: { type: Type.STRING },
+                                ongoru: { type: Type.STRING }
+                            },
+                            required: ["baslik", "ne_yapmali", "nasil_yapmali", "sure", "ongoru"]
+                        }
+                    }
+                },
+                required: ["senaryo", "hedef_yuzdelik", "hedef_puan", "puan_araligi", "gerekli_net_artisi", "gelisim_adimlari"]
+            }
+          },
+          required: ["ogrenci_bilgi", "executive_summary", "exams_history", "konu_analizi", "calisma_plani", "simulasyon"]
+        }
+      }
+    });
+
+    const duration = (Date.now() - startTime) / 1000;
+    console.log(`${logPrefix} Response received in ${duration}s`);
+
+    // --- 3. Safety & Response Validation ---
+    if (response.candidates && response.candidates.length > 0) {
+        const candidate = response.candidates[0];
+        if (candidate.finishReason !== "STOP") {
+            console.warn(`${logPrefix} Abnormal finish reason: ${candidate.finishReason}`);
+            
+            if (candidate.finishReason === "SAFETY") {
+                console.error(`${logPrefix} Safety Ratings:`, candidate.safetyRatings);
+                throw new Error("Görsel içerik güvenlik filtrelerine takıldı. Lütfen görselin net ve uygun olduğundan emin olun.");
+            }
+            if (candidate.finishReason === "MAX_TOKENS") {
+                console.error(`${logPrefix} Output truncated due to MAX_TOKENS.`);
+                throw new Error("Analiz sonucu çok uzun olduğu için kesildi. Lütfen daha az sayıda sınav yükleyin.");
+            }
+        }
+    }
+
+    const textResponse = response.text;
+    if (!textResponse) {
+      console.error(`${logPrefix} Empty text response. Full Response Object:`, JSON.stringify(response, null, 2));
+      throw new Error("Model boş yanıt döndürdü. Görsel okunabilir olmayabilir veya içerik algılanamadı.");
+    }
+
+    const cleanJson = textResponse.replace(/```json|```/g, '').trim();
+
+    // --- 4. JSON Parsing ---
+    try {
+        const result: ComprehensiveAnalysis = JSON.parse(cleanJson);
+        console.groupEnd();
+        return result;
+    } catch (parseError) {
+        console.error(`${logPrefix} JSON Parse Error:`, parseError);
+        console.error(`${logPrefix} Raw Response Text (First 1000 chars):`, textResponse.substring(0, 1000));
+        throw new Error("Veri analizi tamamlanamadı. Model çıktısı bozuk. Lütfen görseli kırparak veya daha net çekerek tekrar deneyin.");
+    }
+
+  } catch (error: any) {
+    console.groupEnd();
+    
+    // Extract standard HTTP error fields
+    const status = error.status || error.response?.status;
+    const statusText = error.statusText || error.response?.statusText;
+    
+    console.error(`${logPrefix} ---------------- CRITICAL API ERROR ----------------`);
+    console.error(`${logPrefix} Status:`, status, statusText);
+    console.error(`${logPrefix} Message:`, error.message);
+    
+    // --- ENHANCED DEBUGGING LOGS ---
+    // Log full API response/body as requested to debug schema mismatches or API errors
+    if (error.response) {
+        console.error(`${logPrefix} Full API Response JSON:`, JSON.stringify(error.response, null, 2));
+    }
+    if (error.body) {
+            console.error(`${logPrefix} Error Body JSON:`, JSON.stringify(error.body, null, 2));
+    }
+    // Fallback: log the whole error object structure
+    console.error(`${logPrefix} Raw Error Object:`, error);
+    // -------------------------------
+
+    let userMessage = "Analiz sırasında beklenmeyen bir hata oluştu.";
+
+    if (status === 400 || (error.message && error.message.includes("400"))) {
+        if (error.message?.includes("INVALID_ARGUMENT") || error.message?.includes("Image input")) {
+             userMessage = "Görsel formatı veya boyutu reddedildi. Lütfen dosyayı kontrol edin (Max 20MB).";
+        } else {
+             userMessage = "İstek hatası (400). Gönderilen veri model tarafından işlenemedi.";
+        }
+    } else if (status === 401 || (error.message && error.message.includes("401"))) {
+        userMessage = "Yetkilendirme hatası (401). API Anahtarı geçersiz.";
+    } else if (status === 429 || (error.message && error.message.includes("429"))) {
+        userMessage = "Çok fazla istek (429). Sistem şu an yoğun, lütfen 30 saniye bekleyip tekrar deneyin.";
+    } else if (status === 500 || status === 503) {
+        userMessage = "Google sunucularında geçici bir sorun var (500/503). Lütfen tekrar deneyin.";
+    } else if (error.message) {
+        try {
+             if (error.message.trim().startsWith('{')) {
+                 userMessage = "Teknik bir hata oluştu. Lütfen konsol loglarını kontrol edin.";
+             } else {
+                 userMessage = error.message;
+             }
+        } catch {
+             userMessage = error.message;
+        }
+    }
+
+    throw new Error(userMessage);
+  }
+};
