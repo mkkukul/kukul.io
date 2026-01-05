@@ -249,44 +249,64 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
     console.error(`${logPrefix} Status:`, status, statusText);
     console.error(`${logPrefix} Message:`, error.message);
     
-    // --- ENHANCED DEBUGGING LOGS ---
-    // Log full API response/body as requested to debug schema mismatches or API errors
+    // Debugging logs
     if (error.response) {
-        console.error(`${logPrefix} Full API Response JSON:`, JSON.stringify(error.response, null, 2));
+        try {
+            console.error(`${logPrefix} Full API Response JSON:`, JSON.stringify(error.response, null, 2));
+        } catch(e) { /* ignore circular */ }
     }
     if (error.body) {
+         try {
             console.error(`${logPrefix} Error Body JSON:`, JSON.stringify(error.body, null, 2));
+         } catch(e) { /* ignore circular */ }
     }
-    // Fallback: log the whole error object structure
-    console.error(`${logPrefix} Raw Error Object:`, error);
-    // -------------------------------
 
-    let userMessage = "Analiz sırasında beklenmeyen bir hata oluştu.";
+    // --- CUSTOMIZED ERROR MESSAGES FOR UI ---
+    let userMessage = "Analiz sırasında beklenmeyen bir teknik hata oluştu.";
 
+    // 400 Bad Request
     if (status === 400 || (error.message && error.message.includes("400"))) {
-        if (error.message?.includes("INVALID_ARGUMENT") || error.message?.includes("Image input")) {
-             userMessage = "Görsel formatı veya boyutu reddedildi. Lütfen dosyayı kontrol edin (Max 20MB).";
+        if (error.message?.includes("Image") || error.message?.includes("decode") || error.message?.includes("payload")) {
+            userMessage = "Yüklenen görsel işlenemedi. Dosya bozuk olabilir veya formatı desteklenmiyor. Lütfen net bir JPG/PNG yükleyin (Max 20MB).";
+        } else if (error.message?.includes("INVALID_ARGUMENT")) {
+             userMessage = "Gönderilen veri formatı geçersiz. Sayfayı yenileyip tekrar denemenizi öneririz.";
         } else {
-             userMessage = "İstek hatası (400). Gönderilen veri model tarafından işlenemedi.";
+            userMessage = "İstek geçersiz (400). Görsel boyutu çok yüksek veya okunamaz durumda olabilir.";
         }
-    } else if (status === 401 || (error.message && error.message.includes("401"))) {
-        userMessage = "Yetkilendirme hatası (401). API Anahtarı geçersiz.";
-    } else if (status === 429 || (error.message && error.message.includes("429"))) {
-        userMessage = "Çok fazla istek (429). Sistem şu an yoğun, lütfen 30 saniye bekleyip tekrar deneyin.";
-    } else if (status === 500 || status === 503) {
-        userMessage = "Google sunucularında geçici bir sorun var (500/503). Lütfen tekrar deneyin.";
-    } else if (error.message) {
-        try {
-             if (error.message.trim().startsWith('{')) {
-                 userMessage = "Teknik bir hata oluştu. Lütfen konsol loglarını kontrol edin.";
-             } else {
-                 userMessage = error.message;
-             }
-        } catch {
-             userMessage = error.message;
+    } 
+    // 401 Unauthorized
+    else if (status === 401 || (error.message && error.message.includes("401"))) {
+        userMessage = "Yetkilendirme Hatası: API Anahtarı geçersiz veya süresi dolmuş.";
+    } 
+    // 403 Forbidden
+    else if (status === 403 || (error.message && error.message.includes("403"))) {
+         userMessage = "Erişim Reddedildi: API anahtarının bu işlem için yetkisi yok veya fatura hesabı aktif değil.";
+    }
+    // 429 Too Many Requests
+    else if (status === 429 || (error.message && error.message.includes("429"))) {
+        userMessage = "Sistem şu an çok yoğun veya kota sınırına ulaşıldı. Lütfen 1 dakika bekleyip tekrar deneyin.";
+    } 
+    // 500 Internal Server Error
+    else if (status === 500 || (error.message && error.message.includes("500"))) {
+         userMessage = "Sunucu Hatası (500): Google AI servisinde geçici bir sorun var. Lütfen daha sonra tekrar deneyin.";
+    } 
+    // 503 Service Unavailable / 504 Gateway Timeout
+    else if (status === 503 || status === 504 || (error.message && (error.message.includes("503") || error.message.includes("504")))) {
+         userMessage = "Hizmet Kullanılamıyor: Servis şu an cevap veremiyor veya zaman aşımına uğradı. İnternet bağlantınızı kontrol edip tekrar deneyin.";
+    }
+    // Specific Gemini Safety/Finish Errors treated as thrown errors
+    else if (error.message && error.message.includes("SAFETY")) {
+         userMessage = "İçerik Güvenliği: Yüklenen görsel, güvenlik filtrelerine takıldı. Lütfen sadece eğitim materyali içerdiğinden emin olun.";
+    }
+    // Catch-all for other text errors
+    else if (error.message) {
+        // If it looks like a raw JSON object string, keep generic
+        if (!error.message.trim().startsWith('{')) {
+             userMessage = `Hata: ${error.message}`;
         }
     }
 
+    console.error(`${logPrefix} Final User Message:`, userMessage);
     throw new Error(userMessage);
   }
 };
