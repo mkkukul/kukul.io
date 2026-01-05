@@ -5,7 +5,7 @@ import AnalysisDashboard from './components/AnalysisDashboard';
 import HistoryDashboard from './components/HistoryDashboard';
 import { analyzeExamFiles } from './services/geminiService';
 import { ComprehensiveAnalysis, AppState } from './types';
-import { AlertCircle, RefreshCcw } from 'lucide-react';
+import { AlertCircle, RefreshCcw, Brain } from 'lucide-react';
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(AppState.IDLE);
@@ -170,13 +170,8 @@ const App: React.FC = () => {
         <header className="w-full glass-panel sticky top-0 z-50 border-b border-slate-200/60">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
             <div className="flex items-center gap-4 cursor-pointer group" onClick={handleReset}>
-              <div className="relative">
-                 <div className="absolute -inset-1 bg-brand-500 rounded-full blur opacity-25 group-hover:opacity-50 transition-opacity"></div>
-                 <img 
-                     src="/android-chrome-192x192.png" 
-                     alt="Kukul.io" 
-                     className="w-16 h-16 rounded-full border-2 border-white shadow-lg object-cover relative z-10 bg-white transition-transform group-hover:scale-105"
-                 />
+              <div className="relative flex items-center justify-center w-16 h-16 bg-white rounded-2xl border-2 border-brand-100 shadow-lg group-hover:scale-105 transition-transform">
+                 <Brain className="w-10 h-10 text-brand-600" />
               </div>
               <div>
                 <h1 className="text-2xl font-black text-slate-800 tracking-tight group-hover:text-brand-700 transition-colors">
