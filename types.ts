@@ -66,12 +66,6 @@ export interface ComprehensiveAnalysis {
   };
   exams_history: ExamPerformance[]; // For trend charts
   konu_analizi: TopicAnalysis[]; // Aggregated or latest detailed topic analysis
-  kiyaslama: {
-    ogrenci_genel_net: number;
-    sinif_ort_net: number;
-    okul_ort_net: number;
-    genel_ort_net: number;
-  };
   calisma_plani: ActionItem[];
   simulasyon: Simulation;
 }

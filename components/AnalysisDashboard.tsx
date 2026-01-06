@@ -432,6 +432,15 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
         return multiplier * (a.yanlis - b.yanlis);
     }
     
+    // Custom sort for the new "Net Kaybı" column
+    if (key === 'net_kaybi') {
+        // Net loss is (Wrong / 3). Since 3 is constant, sorting by wrong answers is sufficient,
+        // but let's be explicit for clarity.
+        const valA = (a.yanlis || 0) / 3;
+        const valB = (b.yanlis || 0) / 3;
+        return multiplier * (valA - valB);
+    }
+    
     // Default numeric sort with safety check
     const valA = Number(a[key as keyof typeof a]) || 0;
     const valB = Number(b[key as keyof typeof b]) || 0;
@@ -1141,6 +1150,15 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                     </div>
                                 </th>
                                 <th 
+                                    className="px-6 py-4 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors group"
+                                    onClick={() => handleSort('net_kaybi')}
+                                >
+                                    <div className="flex items-center justify-center gap-2">
+                                        Net Kaybı
+                                        <RenderSortIcon columnKey="net_kaybi" />
+                                    </div>
+                                </th>
+                                <th 
                                     className="px-6 py-4 w-1/4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors group"
                                     onClick={() => handleSort('basari_yuzdesi')}
                                 >
@@ -1188,6 +1206,11 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                             <span className="text-red-500 dark:text-red-400 font-bold bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded">{konu.yanlis} Y</span>
                                             <span className="text-slate-400 dark:text-slate-500 font-medium bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">{konu.bos} B</span>
                                         </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                        <span className="text-sm font-semibold text-slate-600 dark:text-slate-400">
+                                            -{(konu.yanlis / 3).toFixed(2)} Net
+                                        </span>
                                     </td>
                                     <td className="px-6 py-4 align-middle">
                                         <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2.5 mb-1 overflow-hidden">

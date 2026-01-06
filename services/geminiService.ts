@@ -90,7 +90,7 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
                 required: ["ad_soyad"]
             },
             executive_summary: {
-                type: Type.OBJECT,
+                type: Type.OBJECT, 
                 properties: {
                     mevcut_durum: { type: Type.STRING, description: "Markdown formatında, öğrencinin durumunu 4 ana başlık altında en az 400 kelime ile anlatan çok detaylı rapor." },
                     guclu_yonler: { type: Type.ARRAY, items: { type: Type.STRING } },
@@ -126,12 +126,12 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
             },
             konu_analizi: {
                 type: Type.ARRAY,
-                description: "Belgede yer alan konu analiz tablosunun BİREBİR, EKSİKSİZ, SATIR SATIR dökümü. Asla özetleme yapılmamalı, kağıtta ne yazıyorsa o çekilmelidir.",
+                description: "Sınav kağıdındaki konu analiz tablosunun BİREBİR KOPYASI. Tabloda kaç satır varsa o kadar obje oluştur. Konu isimlerini belgeden aynen al, asla kısaltma, değiştirme veya birleştirme yapma. OCR mantığıyla çalış.",
                 items: {
                     type: Type.OBJECT,
                     properties: {
                         ders: { type: Type.STRING },
-                        konu: { type: Type.STRING },
+                        konu: { type: Type.STRING, description: "Belgedeki satırda yazan konu/kazanım adı (Birebir aynı olmalı)" },
                         dogru: { type: Type.NUMBER },
                         yanlis: { type: Type.NUMBER },
                         bos: { type: Type.NUMBER },
@@ -140,15 +140,6 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
                         durum: { type: Type.STRING, description: "Kritik (<%50), Geliştirilmeli (%50-%70), İyi (%70-%80), Mükemmel (>%80)" }
                     },
                     required: ["ders", "konu", "lgs_kayip_puan", "durum"]
-                }
-            },
-            kiyaslama: {
-                type: Type.OBJECT,
-                properties: {
-                    ogrenci_genel_net: { type: Type.NUMBER },
-                    sinif_ort_net: { type: Type.NUMBER },
-                    okul_ort_net: { type: Type.NUMBER },
-                    genel_ort_net: { type: Type.NUMBER }
                 }
             },
             calisma_plani: {
@@ -241,23 +232,32 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
   } catch (error: any) {
     console.groupEnd();
     
+    console.error(`${logPrefix} ---------------- CRITICAL API ERROR ----------------`);
+    
+    // 1. Log Raw Error Object (crucial for debugging)
+    console.error(`${logPrefix} Raw Error Object:`, error);
+
     // Extract standard HTTP error fields
     const status = error.status || error.response?.status;
     const statusText = error.statusText || error.response?.statusText;
     
-    console.error(`${logPrefix} ---------------- CRITICAL API ERROR ----------------`);
     console.error(`${logPrefix} Status:`, status, statusText);
     console.error(`${logPrefix} Message:`, error.message);
     
-    // Debugging logs
+    // Debugging logs - Full details
     if (error.response) {
         try {
             console.error(`${logPrefix} Full API Response JSON:`, JSON.stringify(error.response, null, 2));
-        } catch(e) { /* ignore circular */ }
+        } catch(e) { console.error(`${logPrefix} Could not stringify response`, e); }
     }
     if (error.body) {
          try {
             console.error(`${logPrefix} Error Body JSON:`, JSON.stringify(error.body, null, 2));
+         } catch(e) { /* ignore circular */ }
+    }
+    if (error.errorDetails) {
+         try {
+            console.error(`${logPrefix} Error Details:`, JSON.stringify(error.errorDetails, null, 2));
          } catch(e) { /* ignore circular */ }
     }
 
