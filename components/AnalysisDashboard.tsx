@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { ComprehensiveAnalysis, TopicAnalysis } from '../types';
 import { 
@@ -131,11 +132,11 @@ const renderBold = (text: string) => {
   
   return parts.map((part, j) => {
     if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={j} className="font-bold text-slate-900">{part.slice(2, -2)}</strong>;
+      return <strong key={j} className="font-bold text-slate-900 dark:text-slate-100">{part.slice(2, -2)}</strong>;
     }
     // Highlight time duration patterns
     if (part.includes('dk') || part.includes('Süre:')) {
-         return <span key={j} className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-bold mx-1 border border-blue-100 whitespace-nowrap"><Timer className="w-3 h-3" /> {part.replace(/[()]/g, '')}</span>
+         return <span key={j} className="inline-flex items-center gap-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-xs font-bold mx-1 border border-blue-100 dark:border-blue-800 whitespace-nowrap"><Timer className="w-3 h-3" /> {part.replace(/[()]/g, '')}</span>
     }
     return part;
   });
@@ -150,7 +151,7 @@ const FormattedText: React.FC<{ text: string, className?: string }> = ({ text, c
         const trimmed = line.trim();
         if (trimmed.startsWith('###')) {
           return (
-            <h3 key={i} className="text-lg font-bold text-brand-700 mt-4 mb-2 border-b border-slate-200 pb-1 flex items-center gap-2">
+            <h3 key={i} className="text-lg font-bold text-brand-700 dark:text-brand-400 mt-4 mb-2 border-b border-slate-200 dark:border-slate-700 pb-1 flex items-center gap-2">
               {trimmed.replace(/###/g, '').trim()}
             </h3>
           );
@@ -158,7 +159,7 @@ const FormattedText: React.FC<{ text: string, className?: string }> = ({ text, c
         if (trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.startsWith('* ')) {
           return (
             <div key={i} className="flex gap-3 ml-1 mb-2 items-start group">
-              <span className="text-brand-500 mt-1.5 shrink-0 bg-brand-50 rounded-full p-0.5">
+              <span className="text-brand-500 mt-1.5 shrink-0 bg-brand-50 dark:bg-brand-900 rounded-full p-0.5">
                   <CheckCircle2 className="w-3 h-3" />
               </span>
               <span className="leading-relaxed">{renderBold(trimmed.replace(/^[-•*]\s*/, ''))}</span>
@@ -167,11 +168,11 @@ const FormattedText: React.FC<{ text: string, className?: string }> = ({ text, c
         }
         if (/^\d+\./.test(trimmed)) {
            return (
-            <div key={i} className="flex gap-4 ml-1 mb-3 items-start bg-slate-50 p-3 rounded-xl border border-slate-100 hover:border-brand-200 transition-colors">
-               <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-white text-brand-600 text-sm font-bold shrink-0 shadow-sm border border-slate-200">
+            <div key={i} className="flex gap-4 ml-1 mb-3 items-start bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700 hover:border-brand-200 dark:hover:border-brand-800 transition-colors">
+               <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-brand-600 dark:text-brand-400 text-sm font-bold shrink-0 shadow-sm border border-slate-200 dark:border-slate-600">
                    {trimmed.split('.')[0]}
                </span>
-               <span className="leading-relaxed mt-0.5 text-slate-700 font-medium">{renderBold(trimmed.replace(/^\d+\.\s*/, ''))}</span>
+               <span className="leading-relaxed mt-0.5 text-slate-700 dark:text-slate-300 font-medium">{renderBold(trimmed.replace(/^\d+\.\s*/, ''))}</span>
             </div>
            )
         }
@@ -244,41 +245,41 @@ const CustomTopicTooltip = ({ active, payload, label }: any) => {
         const derivedStatus = getStatusByPercentage(data.basari_yuzdesi);
 
         return (
-            <div className="bg-white/95 backdrop-blur-sm p-4 rounded-2xl shadow-xl border border-slate-200 text-sm max-w-[280px] z-50 animate-fade-in">
+            <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm p-4 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 text-sm max-w-[280px] z-50 animate-fade-in">
                 {/* Header */}
-                <div className="border-b border-slate-100 pb-2 mb-2 flex justify-between items-start">
+                <div className="border-b border-slate-100 dark:border-slate-700 pb-2 mb-2 flex justify-between items-start">
                     <div>
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{data.ders}</p>
-                        <h4 className="font-bold text-slate-800 text-base leading-tight mt-0.5">{data.konu}</h4>
+                        <h4 className="font-bold text-slate-800 dark:text-slate-100 text-base leading-tight mt-0.5">{data.konu}</h4>
                     </div>
                     {derivedStatus === 'Kritik' && <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />}
                 </div>
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-3 gap-2 mb-3">
-                    <div className="bg-emerald-50 rounded-lg p-2 text-center border border-emerald-100">
-                        <div className="text-emerald-700 font-black text-lg leading-none">{data.dogru}</div>
-                        <div className="text-[9px] text-emerald-600 font-bold uppercase mt-1">Doğru</div>
+                    <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-2 text-center border border-emerald-100 dark:border-emerald-800">
+                        <div className="text-emerald-700 dark:text-emerald-400 font-black text-lg leading-none">{data.dogru}</div>
+                        <div className="text-[9px] text-emerald-600 dark:text-emerald-500 font-bold uppercase mt-1">Doğru</div>
                     </div>
-                     <div className="bg-red-50 rounded-lg p-2 text-center border border-red-100">
-                        <div className="text-red-600 font-black text-lg leading-none">{data.yanlis}</div>
+                     <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-2 text-center border border-red-100 dark:border-red-800">
+                        <div className="text-red-600 dark:text-red-400 font-black text-lg leading-none">{data.yanlis}</div>
                         <div className="text-[9px] text-red-500 font-bold uppercase mt-1">Yanlış</div>
                     </div>
-                     <div className="bg-slate-50 rounded-lg p-2 text-center border border-slate-100">
-                        <div className="text-slate-600 font-black text-lg leading-none">{data.bos}</div>
+                     <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-2 text-center border border-slate-100 dark:border-slate-600">
+                        <div className="text-slate-600 dark:text-slate-300 font-black text-lg leading-none">{data.bos}</div>
                         <div className="text-[9px] text-slate-400 font-bold uppercase mt-1">Boş</div>
                     </div>
                 </div>
 
                 {/* Comparison / Detail Section */}
-                <div className="space-y-2 bg-slate-50 rounded-xl p-3">
+                <div className="space-y-2 bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3">
                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-slate-500 font-medium">LGS'ye Etkisi (Kayıp)</span>
-                        <span className="text-red-600 font-black bg-white px-1.5 py-0.5 rounded shadow-sm">-{data.lgs_kayip_puan} Puan</span>
+                        <span className="text-slate-500 dark:text-slate-400 font-medium">LGS'ye Etkisi (Kayıp)</span>
+                        <span className="text-red-600 dark:text-red-400 font-black bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded shadow-sm">-{data.lgs_kayip_puan} Puan</span>
                      </div>
                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-slate-500 font-medium">Başarı Yüzdesi</span>
-                        <span className={`font-bold ${data.basari_yuzdesi >= 70 ? 'text-emerald-600' : data.basari_yuzdesi >= 50 ? 'text-amber-600' : 'text-red-600'}`}>%{data.basari_yuzdesi.toFixed(1)}</span>
+                        <span className="text-slate-500 dark:text-slate-400 font-medium">Başarı Yüzdesi</span>
+                        <span className={`font-bold ${data.basari_yuzdesi >= 70 ? 'text-emerald-600 dark:text-emerald-400' : data.basari_yuzdesi >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>%{data.basari_yuzdesi.toFixed(1)}</span>
                     </div>
                 </div>
             </div>
@@ -449,10 +450,10 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
   };
 
   const RenderSortIcon = ({ columnKey }: { columnKey: string }) => {
-      if (sortConfig.key !== columnKey) return <ArrowUpDown className="w-4 h-4 text-slate-300 opacity-50 group-hover:opacity-100" />;
+      if (sortConfig.key !== columnKey) return <ArrowUpDown className="w-4 h-4 text-slate-300 dark:text-slate-600 opacity-50 group-hover:opacity-100" />;
       return sortConfig.direction === 'asc' 
-        ? <ArrowUp className="w-4 h-4 text-brand-600" /> 
-        : <ArrowDown className="w-4 h-4 text-brand-600" />;
+        ? <ArrowUp className="w-4 h-4 text-brand-600 dark:text-brand-400" /> 
+        : <ArrowDown className="w-4 h-4 text-brand-600 dark:text-brand-400" />;
   };
 
   const studyPlanByLesson: Record<string, any[]> = {};
@@ -505,9 +506,9 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
       const prev = data[data.length - 2][key] || 0;
       const diff = last - prev;
       
-      if (diff > 0.5) return <span className="flex items-center text-emerald-600 font-bold text-xs gap-1 bg-emerald-50 px-2 py-1 rounded"><ArrowUp className="w-3 h-3" /> +{diff.toFixed(1)}</span>;
-      if (diff < -0.5) return <span className="flex items-center text-red-600 font-bold text-xs gap-1 bg-red-50 px-2 py-1 rounded"><ArrowDown className="w-3 h-3" /> {diff.toFixed(1)}</span>;
-      return <span className="text-slate-400 font-bold text-xs bg-slate-50 px-2 py-1 rounded flex items-center gap-1"><ArrowRight className="w-3 h-3" /> Stabil</span>;
+      if (diff > 0.5) return <span className="flex items-center text-emerald-600 dark:text-emerald-400 font-bold text-xs gap-1 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded"><ArrowUp className="w-3 h-3" /> +{diff.toFixed(1)}</span>;
+      if (diff < -0.5) return <span className="flex items-center text-red-600 dark:text-red-400 font-bold text-xs gap-1 bg-red-50 dark:bg-red-900/30 px-2 py-1 rounded"><ArrowDown className="w-3 h-3" /> {diff.toFixed(1)}</span>;
+      return <span className="text-slate-400 dark:text-slate-500 font-bold text-xs bg-slate-50 dark:bg-slate-700 px-2 py-1 rounded flex items-center gap-1"><ArrowRight className="w-3 h-3" /> Stabil</span>;
   };
 
   // --- NEW: POTENTIAL & RECOVERABLE SCORE ANALYSIS ---
@@ -597,17 +598,17 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
     <div className="w-full max-w-7xl mx-auto pb-12 animate-fade-in">
       
       {/* HEADER & SCOPE SELECTION */}
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 mb-8 flex flex-col gap-6">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 mb-8 flex flex-col gap-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div className="flex items-center gap-4">
-            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-colors ${viewScope === 'all' ? 'bg-indigo-100 text-indigo-600' : 'bg-brand-100 text-brand-600'}`}>
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-colors ${viewScope === 'all' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'bg-brand-100 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400'}`}>
                 {viewScope === 'all' ? <Layers className="w-8 h-8" /> : <User className="w-8 h-8" />}
             </div>
             <div>
-                <h2 className="text-2xl font-bold text-slate-900">{activeData.ogrenci_bilgi?.ad_soyad || "Öğrenci"}</h2>
-                <div className="flex gap-3 text-sm text-slate-500 mt-1">
-                <span className="bg-slate-100 px-2 py-0.5 rounded">Şube: {activeData.ogrenci_bilgi?.sube || "-"}</span>
-                <span className="bg-slate-100 px-2 py-0.5 rounded">No: {activeData.ogrenci_bilgi?.numara || "-"}</span>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{activeData.ogrenci_bilgi?.ad_soyad || "Öğrenci"}</h2>
+                <div className="flex gap-3 text-sm text-slate-500 dark:text-slate-400 mt-1">
+                <span className="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">Şube: {activeData.ogrenci_bilgi?.sube || "-"}</span>
+                <span className="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">No: {activeData.ogrenci_bilgi?.numara || "-"}</span>
                 </div>
             </div>
             </div>
@@ -617,7 +618,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                     <select 
                         value={viewScope}
                         onChange={(e) => setViewScope(e.target.value)}
-                        className="w-full appearance-none bg-slate-50 border border-slate-300 text-slate-700 py-2.5 pl-4 pr-10 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer hover:border-brand-400 transition-colors"
+                        className="w-full appearance-none bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 py-2.5 pl-4 pr-10 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer hover:border-brand-400 dark:hover:border-brand-500 transition-colors"
                     >
                         <option value="all">📊 Tüm Denemeler (Genel)</option>
                         {allAnalyses
@@ -629,40 +630,40 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                             })
                         }
                     </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 dark:text-slate-400">
                         <ArrowUpDown className="h-4 w-4" />
                     </div>
                 </div>
                 {viewScope === 'all' && (
-                    <span className="text-xs text-indigo-600 font-bold bg-indigo-50 px-2 py-1 rounded">
+                    <span className="text-xs text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded">
                         {globalTrendData.length} Denemenin Ortalaması
                     </span>
                 )}
             </div>
         </div>
 
-        <div className="w-full h-px bg-slate-100"></div>
+        <div className="w-full h-px bg-slate-100 dark:bg-slate-700"></div>
 
         <div className="flex flex-wrap gap-6 justify-between items-center text-sm md:text-base">
              <div>
-                <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Mevcut LGS Dilimi {viewScope === 'all' && '(Ort.)'}</p>
-                <p className="text-3xl font-black text-brand-600">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Mevcut LGS Dilimi {viewScope === 'all' && '(Ort.)'}</p>
+                <p className="text-3xl font-black text-brand-600 dark:text-brand-400">
                   {activeData.executive_summary?.lgs_tahmini_yuzdelik ? `%${activeData.executive_summary.lgs_tahmini_yuzdelik.toFixed(2)}` : '-'}
                 </p>
              </div>
-             <div className="hidden md:block w-px h-10 bg-slate-200"></div>
+             <div className="hidden md:block w-px h-10 bg-slate-200 dark:bg-slate-700"></div>
              <div>
-                <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
                     {viewScope === 'all' ? 'Mevcut Ortalama Puan' : 'Bu Sınav Puanı'}
                 </p>
-                <p className="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">
+                <p className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white tracking-tight">
                     {currentScoreDisplay}
                 </p>
              </div>
              <div className="ml-auto">
                  <button 
                     onClick={onReset}
-                    className="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shadow-sm"
+                    className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors shadow-sm"
                   >
                     + Yeni Analiz Yükle
                   </button>
@@ -683,8 +684,8 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
             onClick={() => setActiveTab(tab.id as any)}
             className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all whitespace-nowrap
               ${activeTab === tab.id 
-                ? 'bg-brand-600 text-white shadow-lg shadow-brand-500/30' 
-                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'}`}
+                ? 'bg-brand-600 dark:bg-brand-500 text-white shadow-lg shadow-brand-500/30' 
+                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'}`}
           >
             <tab.icon className="w-4 h-4" />
             {tab.label}
@@ -709,18 +710,18 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                 </div>
             </div>
 
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 flex flex-col">
+            <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col">
                 <div className="mb-6">
-                    <div className="bg-amber-100 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
-                        <Target className="w-6 h-6 text-amber-600" />
+                    <div className="bg-amber-100 dark:bg-amber-900/30 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
+                        <Target className="w-6 h-6 text-amber-600 dark:text-amber-500" />
                     </div>
-                    <h3 className="text-lg font-bold text-slate-800 mb-1">Gelecek Simülasyonu</h3>
-                    <p className="text-xs text-slate-500 uppercase tracking-wide font-bold">BU ADIMLARI UYGULARSAN</p>
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">Gelecek Simülasyonu</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide font-bold">BU ADIMLARI UYGULARSAN</p>
                 </div>
                 
                 {/* NEW: Potential Bars Section */}
-                <div className="mb-6 bg-slate-50 border border-slate-100 rounded-xl p-4">
-                    <h4 className="text-xs font-bold text-slate-500 mb-3 flex items-center gap-2 uppercase tracking-wide">
+                <div className="mb-6 bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700 rounded-xl p-4">
+                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2 uppercase tracking-wide">
                         <BarChart2 className="w-3 h-3" />
                         Ders Bazlı Gelişim Kapasitesi
                     </h4>
@@ -728,19 +729,19 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                         {potentials.map((p, idx) => ( // Show all opportunities in fixed order
                             <div key={idx}>
                                 <div className="flex justify-between text-xs mb-1">
-                                    <span className="font-semibold text-slate-600">{p.label}</span>
-                                    <span className="text-slate-500">
-                                        <span className="font-medium text-slate-800">{p.current.toFixed(1)}</span> / <span className="font-bold">{p.limit} Net</span>
+                                    <span className="font-semibold text-slate-600 dark:text-slate-300">{p.label}</span>
+                                    <span className="text-slate-500 dark:text-slate-400">
+                                        <span className="font-medium text-slate-800 dark:text-slate-200">{p.current.toFixed(1)}</span> / <span className="font-bold">{p.limit} Net</span>
                                     </span>
                                 </div>
-                                <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden flex">
+                                <div className="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-1.5 overflow-hidden flex">
                                      {/* Current Net */}
                                      <div className="h-full transition-all duration-500" style={{ width: `${p.percentage}%`, backgroundColor: p.color }}></div>
                                      {/* Potential (Gap) - Transparent color */}
                                      <div className="h-full relative transition-all duration-500" style={{ width: `${(p.gap / p.limit) * 100}%`, backgroundColor: `${p.color}33` }}> 
                                      </div>
                                 </div>
-                                <div className="text-[10px] text-right text-emerald-600 font-bold mt-0.5">
+                                <div className="text-[10px] text-right text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">
                                     +{p.gap.toFixed(1)} net kazanılabilir
                                 </div>
                             </div>
@@ -749,20 +750,20 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                 </div>
 
                 {/* Score Comparison Section */}
-                <div className="mb-6 bg-amber-50 border border-amber-100 rounded-xl p-4 space-y-4">
+                <div className="mb-6 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-xl p-4 space-y-4">
                     
                     {/* Percentile Comparison */}
-                    <div className="flex justify-between items-center border-b border-amber-200/50 pb-2">
+                    <div className="flex justify-between items-center border-b border-amber-200/50 dark:border-amber-800/50 pb-2">
                          <div className="text-center">
-                            <div className="text-[10px] text-amber-800 font-bold uppercase">Şu An</div>
-                            <div className="text-lg font-bold text-amber-900/60 line-through decoration-amber-500/50">
+                            <div className="text-[10px] text-amber-800 dark:text-amber-500 font-bold uppercase">Şu An</div>
+                            <div className="text-lg font-bold text-amber-900/60 dark:text-amber-600/60 line-through decoration-amber-500/50">
                                 %{activeData.executive_summary?.lgs_tahmini_yuzdelik ? activeData.executive_summary.lgs_tahmini_yuzdelik.toFixed(2) : '-'}
                             </div>
                          </div>
                          <ArrowRight className="w-5 h-5 text-amber-500" />
                          <div className="text-center">
-                             <div className="text-[10px] text-amber-800 font-bold uppercase">Hedef</div>
-                             <div className="text-2xl font-black text-amber-600">
+                             <div className="text-[10px] text-amber-800 dark:text-amber-500 font-bold uppercase">Hedef</div>
+                             <div className="text-2xl font-black text-amber-600 dark:text-amber-500">
                                 %{activeData.simulasyon?.hedef_yuzdelik}
                              </div>
                          </div>
@@ -771,18 +772,18 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                     {/* Score Comparison */}
                     <div className="flex justify-between items-center">
                          <div className="text-center">
-                            <div className="text-[10px] text-amber-800 font-bold uppercase">Mevcut Puan</div>
-                            <div className="text-lg font-bold text-amber-900/60 line-through decoration-amber-500/50">
+                            <div className="text-[10px] text-amber-800 dark:text-amber-500 font-bold uppercase">Mevcut Puan</div>
+                            <div className="text-lg font-bold text-amber-900/60 dark:text-amber-600/60 line-through decoration-amber-500/50">
                                 {currentScoreDisplay}
                             </div>
                          </div>
                          <ArrowRight className="w-5 h-5 text-amber-500" />
                          <div className="text-center">
-                             <div className="text-[10px] text-amber-800 font-bold uppercase">Maksimum Potansiyel</div>
-                             <div className="text-xl font-black text-amber-600">
+                             <div className="text-[10px] text-amber-800 dark:text-amber-500 font-bold uppercase">Maksimum Potansiyel</div>
+                             <div className="text-xl font-black text-amber-600 dark:text-amber-500">
                                 {recoverableInfo.max.toFixed(1)}
                              </div>
-                             <div className="text-[9px] text-amber-600 font-bold bg-amber-100 px-2 py-0.5 rounded-full mt-1">
+                             <div className="text-[9px] text-amber-600 dark:text-amber-400 font-bold bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full mt-1">
                                  +{recoverableInfo.loss.toFixed(1)} Kayıp Puan
                              </div>
                          </div>
@@ -794,8 +795,8 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                     {activeData.simulasyon?.gelisim_adimlari?.map((step, idx) => {
                         const stepConfig = getSimulationStepConfig(step.baslik);
                         return (
-                        <div key={idx} className="bg-slate-50 rounded-xl p-3 border border-slate-100 text-sm hover:border-amber-200 transition-colors">
-                             <div className="font-bold text-slate-800 mb-1 flex items-center gap-2">
+                        <div key={idx} className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3 border border-slate-100 dark:border-slate-700 text-sm hover:border-amber-200 dark:hover:border-amber-800 transition-colors">
+                             <div className="font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center gap-2">
                                  {/* Icon based on lesson */}
                                  <div className="w-5 h-5 rounded-full flex items-center justify-center text-xs shrink-0 text-white" style={{ backgroundColor: stepConfig.color }}>
                                     <stepConfig.icon className="w-3 h-3" />
@@ -805,28 +806,28 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                              
                              <div className="space-y-2 mt-2 pl-7">
                                  <div className="flex gap-2 items-start">
-                                     <Rocket className="w-3 h-3 text-brand-500 mt-1 shrink-0" />
-                                     <p className="text-slate-600 leading-tight">
-                                         <span className="font-semibold text-slate-700">Ne Yapmalı:</span> {step.ne_yapmali}
+                                     <Rocket className="w-3 h-3 text-brand-500 shrink-0 mt-1" />
+                                     <p className="text-slate-600 dark:text-slate-300 leading-tight">
+                                         <span className="font-semibold text-slate-700 dark:text-slate-200">Ne Yapmalı:</span> {step.ne_yapmali}
                                      </p>
                                  </div>
                                  <div className="flex gap-2 items-start">
-                                     <Footprints className="w-3 h-3 text-amber-500 mt-1 shrink-0" />
-                                     <p className="text-slate-600 leading-tight">
-                                         <span className="font-semibold text-slate-700">Yöntem:</span> {step.nasil_yapmali}
+                                     <Footprints className="w-3 h-3 text-amber-500 shrink-0 mt-1" />
+                                     <p className="text-slate-600 dark:text-slate-300 leading-tight">
+                                         <span className="font-semibold text-slate-700 dark:text-slate-200">Yöntem:</span> {step.nasil_yapmali}
                                      </p>
                                  </div>
-                                 <div className="flex gap-2 items-center bg-white p-1.5 rounded border border-slate-100">
+                                 <div className="flex gap-2 items-center bg-white dark:bg-slate-800 p-1.5 rounded border border-slate-100 dark:border-slate-600">
                                      <Clock className="w-3 h-3 text-emerald-500 shrink-0" />
-                                     <span className="text-xs font-bold text-slate-500">{step.sure}</span>
+                                     <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{step.sure}</span>
                                      <span className="text-slate-300 mx-1">|</span>
-                                     <span className="text-xs text-emerald-600 font-semibold">{step.ongoru}</span>
+                                     <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">{step.ongoru}</span>
                                  </div>
                              </div>
                         </div>
                     )})}
                     {!activeData.simulasyon?.gelisim_adimlari && (
-                        <p className="text-slate-500 italic text-sm p-2 text-center">
+                        <p className="text-slate-500 dark:text-slate-400 italic text-sm p-2 text-center">
                             {activeData.simulasyon?.senaryo}
                         </p>
                     )}
@@ -838,12 +839,12 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
         {/* TAB 2: LESSON BASED STUDY PLAN */}
         {activeTab === 'plan' && (
             <div className="animate-fade-in-up">
-                <div className="mb-6 p-6 bg-white rounded-3xl border border-slate-200 shadow-sm">
-                    <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                        <ClipboardCheck className="w-6 h-6 text-emerald-600" />
+                <div className="mb-6 p-6 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                        <ClipboardCheck className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
                         Ders ve Kazanım Odaklı Akıllı Çalışma Planı
                     </h3>
-                    <p className="text-slate-500 mt-2 max-w-3xl">
+                    <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-3xl">
                         {viewScope === 'all' 
                             ? 'Bu çalışma planı, tüm denemelerindeki ortak hataların ve kronik eksiklerin analiz edilerek oluşturulmuştur.' 
                             : 'Bu plan, sadece seçili denemedeki eksiklerin üzerine gitmen için hazırlanmıştır.'}
@@ -866,54 +867,54 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                         }
 
                         return (
-                            <div key={config.label} className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm ring-1 ring-slate-100">
-                                <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-slate-50 to-white">
+                            <div key={config.label} className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm ring-1 ring-slate-100 dark:ring-slate-700/50">
+                                <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-gradient-to-r from-slate-50 to-white dark:from-slate-800 dark:to-slate-800/80">
                                     <div className="flex items-center gap-3">
                                         <div className="p-3 rounded-xl text-white shadow-md transform rotate-3" style={{ backgroundColor: config.color }}>
                                             <config.icon className="w-6 h-6" />
                                         </div>
                                         <div>
-                                            <h4 className="text-2xl font-bold text-slate-900">{config.label}</h4>
-                                            <p className="text-xs text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1">
+                                            <h4 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{config.label}</h4>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
                                                 <Target className="w-3 h-3" />
                                                 {items[0].konu === "Tam Öğrenme / Rutin Kontrol" ? "Mevcut Durumu Koruma" : `${items.length} Kritik Kazanım Tespit Edildi`}
                                             </p>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="divide-y divide-slate-100">
+                                <div className="divide-y divide-slate-100 dark:divide-slate-700">
                                     {items.map((item: any, idx: number) => (
-                                        <div key={idx} className="p-6 md:p-8 hover:bg-slate-50/50 transition-colors grid grid-cols-1 md:grid-cols-12 gap-8">
+                                        <div key={idx} className="p-6 md:p-8 hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors grid grid-cols-1 md:grid-cols-12 gap-8">
                                             <div className="md:col-span-4 lg:col-span-4 flex flex-col">
                                                 <div className="mb-3">
-                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide mb-2 ${item.konu === "Tam Öğrenme / Rutin Kontrol" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide mb-2 ${item.konu === "Tam Öğrenme / Rutin Kontrol" ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400" : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"}`}>
                                                         {item.konu === "Tam Öğrenme / Rutin Kontrol" ? <Star className="w-3 h-3" /> : <BrainCircuit className="w-3 h-3" />}
                                                         {item.konu === "Tam Öğrenme / Rutin Kontrol" ? "Başarı Takibi" : "Kazanım / Konu"}
                                                     </span>
-                                                    <h5 className="text-lg font-bold text-slate-900 leading-tight">
+                                                    <h5 className="text-lg font-bold text-slate-900 dark:text-slate-100 leading-tight">
                                                         {item.konu}
                                                     </h5>
                                                 </div>
-                                                <div className={`rounded-2xl p-4 border mt-2 relative overflow-hidden group ${item.konu === "Tam Öğrenme / Rutin Kontrol" ? "bg-emerald-50 border-emerald-100" : "bg-amber-50 border-amber-100"}`}>
-                                                    <div className={`absolute top-0 right-0 px-2 py-1 rounded-bl-lg text-[10px] font-bold uppercase ${item.konu === "Tam Öğrenme / Rutin Kontrol" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                                                <div className={`rounded-2xl p-4 border mt-2 relative overflow-hidden group ${item.konu === "Tam Öğrenme / Rutin Kontrol" ? "bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800" : "bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800"}`}>
+                                                    <div className={`absolute top-0 right-0 px-2 py-1 rounded-bl-lg text-[10px] font-bold uppercase ${item.konu === "Tam Öğrenme / Rutin Kontrol" ? "bg-emerald-100 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300" : "bg-amber-100 dark:bg-amber-800 text-amber-700 dark:text-amber-300"}`}>
                                                         {item.konu === "Tam Öğrenme / Rutin Kontrol" ? "Durum" : "Teşhis"}
                                                     </div>
                                                     <div className="flex items-start gap-3 relative z-10">
-                                                        <div className="bg-white p-1.5 rounded-full shadow-sm shrink-0 mt-0.5">
-                                                            <Stethoscope className={`w-4 h-4 ${item.konu === "Tam Öğrenme / Rutin Kontrol" ? "text-emerald-600" : "text-amber-600"}`} />
+                                                        <div className="bg-white dark:bg-slate-800 p-1.5 rounded-full shadow-sm shrink-0 mt-0.5">
+                                                            <Stethoscope className={`w-4 h-4 ${item.konu === "Tam Öğrenme / Rutin Kontrol" ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`} />
                                                         </div>
-                                                        <div><p className={`text-sm font-medium leading-relaxed ${item.konu === "Tam Öğrenme / Rutin Kontrol" ? "text-emerald-900" : "text-amber-900"}`}>{item.sebep}</p></div>
+                                                        <div><p className={`text-sm font-medium leading-relaxed ${item.konu === "Tam Öğrenme / Rutin Kontrol" ? "text-emerald-900 dark:text-emerald-300" : "text-amber-900 dark:text-amber-300"}`}>{item.sebep}</p></div>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div className="md:col-span-8 lg:col-span-8 relative">
-                                                <div className="absolute left-0 top-0 bottom-0 w-px bg-slate-100 -ml-4 hidden md:block"></div>
+                                                <div className="absolute left-0 top-0 bottom-0 w-px bg-slate-100 dark:bg-slate-700 -ml-4 hidden md:block"></div>
                                                 <div className="flex items-center gap-2 mb-4">
-                                                    <div className="bg-emerald-100 p-1.5 rounded-lg"><Pill className="w-5 h-5 text-emerald-700" /></div>
-                                                    <h6 className="text-sm font-bold text-emerald-800 uppercase tracking-wide">Uygulanacak Adım Adım Reçete</h6>
+                                                    <div className="bg-emerald-100 dark:bg-emerald-900/30 p-1.5 rounded-lg"><Pill className="w-5 h-5 text-emerald-700 dark:text-emerald-400" /></div>
+                                                    <h6 className="text-sm font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wide">Uygulanacak Adım Adım Reçete</h6>
                                                 </div>
-                                                <div className="bg-white rounded-xl text-slate-700 text-base leading-relaxed pl-1">
-                                                    <FormattedText text={item.tavsiye} className="text-slate-700" />
+                                                <div className="bg-white dark:bg-slate-800 rounded-xl text-slate-700 dark:text-slate-300 text-base leading-relaxed pl-1">
+                                                    <FormattedText text={item.tavsiye} className="text-slate-700 dark:text-slate-300" />
                                                 </div>
                                             </div>
                                         </div>
@@ -935,7 +936,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                     <div className="flex flex-wrap gap-2">
                         <button
                             onClick={() => setSelectedLessonForTopic('Genel')}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedLessonForTopic === 'Genel' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border border-slate-200'}`}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedLessonForTopic === 'Genel' ? 'bg-slate-800 dark:bg-slate-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}`}
                         >
                             Genel Bakış (Tümü)
                         </button>
@@ -945,8 +946,8 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                 onClick={() => setSelectedLessonForTopic(config.label)}
                                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all 
                                     ${selectedLessonForTopic === config.label 
-                                        ? `bg-brand-50 text-brand-700 border border-brand-200 ring-2 ring-brand-100` 
-                                        : 'bg-white text-slate-600 border border-slate-200'}`}
+                                        ? `bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 border border-brand-200 dark:border-brand-800 ring-2 ring-brand-100 dark:ring-brand-800` 
+                                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}`}
                             >
                                 <config.icon className="w-4 h-4" style={{ color: selectedLessonForTopic === config.label ? config.color : undefined }} />
                                 {config.label}
@@ -957,49 +958,49 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
 
                  {/* SUMMARY CARDS - NEW 4 TIER SYSTEM */}
                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-white p-4 rounded-2xl border border-emerald-100 shadow-sm flex flex-col items-center text-center ring-2 ring-emerald-50">
-                        <div className="bg-emerald-100 p-2 rounded-lg mb-2 text-emerald-600">
+                    <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/50 shadow-sm flex flex-col items-center text-center ring-2 ring-emerald-50 dark:ring-emerald-900/20">
+                        <div className="bg-emerald-100 dark:bg-emerald-900/30 p-2 rounded-lg mb-2 text-emerald-600 dark:text-emerald-400">
                              <Trophy className="w-5 h-5" />
                         </div>
-                        <div className="text-2xl font-black text-emerald-600">{topicStats.excellent}</div>
-                        <div className="text-[10px] text-emerald-600/80 font-bold uppercase mt-1">Mükemmel (%80+)</div>
+                        <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{topicStats.excellent}</div>
+                        <div className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 font-bold uppercase mt-1">Mükemmel (%80+)</div>
                     </div>
                     
-                    <div className="bg-white p-4 rounded-2xl border border-blue-100 shadow-sm flex flex-col items-center text-center">
-                        <div className="bg-blue-100 p-2 rounded-lg mb-2 text-blue-600">
+                    <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/50 shadow-sm flex flex-col items-center text-center">
+                        <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mb-2 text-blue-600 dark:text-blue-400">
                              <ThumbsUp className="w-5 h-5" />
                         </div>
-                        <div className="text-2xl font-black text-blue-600">{topicStats.good}</div>
-                        <div className="text-[10px] text-blue-600/80 font-bold uppercase mt-1">İyi (%70-80)</div>
+                        <div className="text-2xl font-black text-blue-600 dark:text-blue-400">{topicStats.good}</div>
+                        <div className="text-[10px] text-blue-600/80 dark:text-blue-400/80 font-bold uppercase mt-1">İyi (%70-80)</div>
                     </div>
 
-                    <div className="bg-white p-4 rounded-2xl border border-amber-100 shadow-sm flex flex-col items-center text-center">
-                        <div className="bg-amber-100 p-2 rounded-lg mb-2 text-amber-600">
+                    <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-amber-100 dark:border-amber-900/50 shadow-sm flex flex-col items-center text-center">
+                        <div className="bg-amber-100 dark:bg-amber-900/30 p-2 rounded-lg mb-2 text-amber-600 dark:text-amber-400">
                              <TrendingUp className="w-5 h-5" />
                         </div>
-                        <div className="text-2xl font-black text-amber-600">{topicStats.improve}</div>
-                        <div className="text-[10px] text-amber-600/80 font-bold uppercase mt-1">Geliştirilmeli (%50-70)</div>
+                        <div className="text-2xl font-black text-amber-600 dark:text-amber-400">{topicStats.improve}</div>
+                        <div className="text-[10px] text-amber-600/80 dark:text-amber-400/80 font-bold uppercase mt-1">Geliştirilmeli (%50-70)</div>
                     </div>
                     
-                    <div className="bg-white p-4 rounded-2xl border border-red-100 shadow-sm flex flex-col items-center text-center">
-                        <div className="bg-red-100 p-2 rounded-lg mb-2 text-red-600">
+                    <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-red-100 dark:border-red-900/50 shadow-sm flex flex-col items-center text-center">
+                        <div className="bg-red-100 dark:bg-red-900/30 p-2 rounded-lg mb-2 text-red-600 dark:text-red-400">
                              <AlertCircle className="w-5 h-5" />
                         </div>
-                        <div className="text-2xl font-black text-red-600">{topicStats.critical}</div>
-                        <div className="text-[10px] text-red-600/80 font-bold uppercase mt-1">Kritik (%50 Altı)</div>
+                        <div className="text-2xl font-black text-red-600 dark:text-red-400">{topicStats.critical}</div>
+                        <div className="text-[10px] text-red-600/80 dark:text-red-400/80 font-bold uppercase mt-1">Kritik (%50 Altı)</div>
                     </div>
                  </div>
 
                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Main Performance Chart */}
-                    <div className="lg:col-span-2 bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+                    <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700">
                         <div className="flex items-center justify-between mb-6">
                             <div>
-                                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                    <BrainCircuit className="w-5 h-5 text-purple-600" />
-                                    {selectedLessonForTopic} Performansı {viewScope === 'all' && <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded ml-2">Kümülatif</span>}
+                                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                    <BrainCircuit className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                                    {selectedLessonForTopic} Performansı {viewScope === 'all' && <span className="text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded ml-2">Kümülatif</span>}
                                 </h3>
-                                <p className="text-sm text-slate-500 mt-1">
+                                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                                     {selectedLessonForTopic === 'Genel' 
                                         ? 'En çok puan kaybedilen 15 kritik konu' 
                                         : `${selectedLessonForTopic} dersindeki tüm konuların analizi`}
@@ -1011,7 +1012,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                             {chartData.length > 0 ? (
                                 <ResponsiveContainer width="100%" height="100%">
                                     <ComposedChart data={chartData} margin={{top: 20, right: 30, left: 20, bottom: 60}}>
-                                        <CartesianGrid stroke="#f1f5f9" vertical={false} />
+                                        <CartesianGrid stroke="#f1f5f9" vertical={false} strokeOpacity={0.1} />
                                         <XAxis 
                                             dataKey="konu" 
                                             angle={-45} 
@@ -1049,7 +1050,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                     </ComposedChart>
                                 </ResponsiveContainer>
                             ) : (
-                                <div className="h-full flex items-center justify-center text-slate-400 flex-col gap-2">
+                                <div className="h-full flex items-center justify-center text-slate-400 dark:text-slate-500 flex-col gap-2">
                                     <AlertTriangle className="w-8 h-8 opacity-50" />
                                     <p>Bu ders için yeterli konu verisi bulunamadı.</p>
                                 </div>
@@ -1058,8 +1059,8 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                     </div>
 
                     {/* Status Distribution Pie Chart */}
-                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-col">
-                         <h3 className="text-lg font-bold text-slate-800 mb-2">Başarı Durumu Dağılımı</h3>
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col">
+                         <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">Başarı Durumu Dağılımı</h3>
                          <div className="flex-grow flex items-center justify-center min-h-[300px]">
                             {topicStats.total > 0 ? (
                                 <ResponsiveContainer width="100%" height={300}>
@@ -1079,7 +1080,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                         </Pie>
                                         <Tooltip 
                                             formatter={(value, name) => [`${value} Konu`, name]}
-                                            contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                                            contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', backgroundColor: 'var(--tooltip-bg, #fff)'}}
                                         />
                                         <Legend 
                                             verticalAlign="bottom" 
@@ -1091,27 +1092,27 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                     </PieChart>
                                 </ResponsiveContainer>
                             ) : (
-                                <div className="text-slate-400 text-sm">Veri yok</div>
+                                <div className="text-slate-400 dark:text-slate-500 text-sm">Veri yok</div>
                             )}
                          </div>
                     </div>
                  </div>
 
                  {/* Detailed Table */}
-                 <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                 <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/80">
                          <div>
-                            <h3 className="text-lg font-bold text-slate-800">Detaylı Konu Karnesi ({selectedLessonForTopic})</h3>
-                            <p className="text-xs text-slate-500 mt-1">Renkli etiketler başarı durumunu gösterir.</p>
+                            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Detaylı Konu Karnesi ({selectedLessonForTopic})</h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Renkli etiketler başarı durumunu gösterir.</p>
                          </div>
-                         <span className="text-xs text-slate-500 italic">Sıralamak için başlıklara tıklayın</span>
+                         <span className="text-xs text-slate-500 dark:text-slate-400 italic">Sıralamak için başlıklara tıklayın</span>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
-                            <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
+                            <thead className="bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-xs uppercase font-semibold">
                             <tr>
                                 <th 
-                                    className="px-6 py-4 w-1/4 cursor-pointer hover:bg-slate-100 transition-colors group"
+                                    className="px-6 py-4 w-1/4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors group"
                                     onClick={() => handleSort('konu')}
                                 >
                                     <div className="flex items-center gap-2">
@@ -1121,7 +1122,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                 </th>
                                 {selectedLessonForTopic === 'Genel' && (
                                     <th 
-                                        className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors group"
+                                        className="px-6 py-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors group"
                                         onClick={() => handleSort('ders')}
                                     >
                                         <div className="flex items-center gap-2">
@@ -1131,7 +1132,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                     </th>
                                 )}
                                 <th 
-                                    className="px-6 py-4 text-center cursor-pointer hover:bg-slate-100 transition-colors group"
+                                    className="px-6 py-4 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors group"
                                     onClick={() => handleSort('soru_dagilimi')}
                                 >
                                     <div className="flex items-center justify-center gap-2">
@@ -1140,7 +1141,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                     </div>
                                 </th>
                                 <th 
-                                    className="px-6 py-4 w-1/4 cursor-pointer hover:bg-slate-100 transition-colors group"
+                                    className="px-6 py-4 w-1/4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors group"
                                     onClick={() => handleSort('basari_yuzdesi')}
                                 >
                                     <div className="flex items-center gap-2">
@@ -1149,7 +1150,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                     </div>
                                 </th>
                                 <th 
-                                    className="px-6 py-4 text-center cursor-pointer hover:bg-slate-100 transition-colors group"
+                                    className="px-6 py-4 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors group"
                                     onClick={() => handleSort('lgs_kayip_puan')}
                                 >
                                     <div className="flex items-center justify-center gap-2">
@@ -1158,7 +1159,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                     </div>
                                 </th>
                                 <th 
-                                    className="px-6 py-4 text-center cursor-pointer hover:bg-slate-100 transition-colors group"
+                                    className="px-6 py-4 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors group"
                                     onClick={() => handleSort('durum')}
                                 >
                                     <div className="flex items-center justify-center gap-2">
@@ -1168,28 +1169,28 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                 </th>
                             </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100">
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                             {sortedTopics.map((konu, idx) => (
-                                <tr key={idx} className={`hover:bg-slate-50 transition-colors ${konu.durum === 'Kritik' ? 'bg-red-50/30' : ''}`}>
+                                <tr key={idx} className={`hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors ${konu.durum === 'Kritik' ? 'bg-red-50/30 dark:bg-red-900/10' : ''}`}>
                                     <td className="px-6 py-4">
-                                        <div className="font-bold text-slate-700">{konu.konu}</div>
+                                        <div className="font-bold text-slate-700 dark:text-slate-200">{konu.konu}</div>
                                     </td>
                                     {selectedLessonForTopic === 'Genel' && (
                                         <td className="px-6 py-4">
-                                            <span className="text-xs font-medium px-2 py-1 rounded bg-slate-100 text-slate-600">
+                                            <span className="text-xs font-medium px-2 py-1 rounded bg-slate-100 dark:bg-slate-600 text-slate-600 dark:text-slate-300">
                                                 {konu.ders}
                                             </span>
                                         </td>
                                     )}
                                     <td className="px-6 py-4 text-center">
                                         <div className="flex items-center justify-center gap-2 text-sm">
-                                            <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">{konu.dogru} D</span>
-                                            <span className="text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded">{konu.yanlis} Y</span>
-                                            <span className="text-slate-400 font-medium bg-slate-100 px-2 py-0.5 rounded">{konu.bos} B</span>
+                                            <span className="text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded">{konu.dogru} D</span>
+                                            <span className="text-red-500 dark:text-red-400 font-bold bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded">{konu.yanlis} Y</span>
+                                            <span className="text-slate-400 dark:text-slate-500 font-medium bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">{konu.bos} B</span>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 align-middle">
-                                        <div className="w-full bg-slate-100 rounded-full h-2.5 mb-1 overflow-hidden">
+                                        <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2.5 mb-1 overflow-hidden">
                                             <div 
                                                 className={`h-2.5 rounded-full ${
                                                     konu.basari_yuzdesi >= 80 ? 'bg-emerald-500' :
@@ -1199,33 +1200,33 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                                 style={{ width: `${konu.basari_yuzdesi}%` }}
                                             ></div>
                                         </div>
-                                        <div className="text-xs text-slate-500 font-medium text-right">
+                                        <div className="text-xs text-slate-500 dark:text-slate-400 font-medium text-right">
                                             %{konu.basari_yuzdesi?.toFixed(1) || 0}
                                         </div>
                                     </td>
-                                    <td className={`px-6 py-4 text-center ${sortConfig.key === 'lgs_kayip_puan' ? 'bg-slate-100/50' : ''}`}>
-                                        <span className={`text-base font-bold ${konu.lgs_kayip_puan > 0.5 ? 'text-red-600' : 'text-slate-600'}`}>
+                                    <td className={`px-6 py-4 text-center ${sortConfig.key === 'lgs_kayip_puan' ? 'bg-slate-100/50 dark:bg-slate-700/50' : ''}`}>
+                                        <span className={`text-base font-bold ${konu.lgs_kayip_puan > 0.5 ? 'text-red-600 dark:text-red-400' : 'text-slate-600 dark:text-slate-400'}`}>
                                             -{konu.lgs_kayip_puan}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-center">
                                         {konu.durum === 'Mükemmel' && (
-                                            <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-100 px-2 py-1 rounded-md text-xs font-bold whitespace-nowrap">
+                                            <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-1 rounded-md text-xs font-bold whitespace-nowrap">
                                                 <Trophy className="w-3 h-3" /> MÜKEMMEL
                                             </span>
                                         )}
                                         {konu.durum === 'İyi' && (
-                                            <span className="inline-flex items-center gap-1 text-blue-700 bg-blue-100 px-2 py-1 rounded-md text-xs font-bold whitespace-nowrap">
+                                            <span className="inline-flex items-center gap-1 text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-md text-xs font-bold whitespace-nowrap">
                                                 <ThumbsUp className="w-3 h-3" /> İYİ
                                             </span>
                                         )}
                                         {konu.durum === 'Geliştirilmeli' && (
-                                            <span className="inline-flex items-center gap-1 text-amber-700 bg-amber-100 px-2 py-1 rounded-md text-xs font-bold whitespace-nowrap">
+                                            <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/30 px-2 py-1 rounded-md text-xs font-bold whitespace-nowrap">
                                                 <TrendingUp className="w-3 h-3" /> GELİŞTİRİLMELİ
                                             </span>
                                         )}
                                         {konu.durum === 'Kritik' && (
-                                            <span className="inline-flex items-center gap-1 text-red-700 bg-red-100 px-2 py-1 rounded-md text-xs font-bold whitespace-nowrap">
+                                            <span className="inline-flex items-center gap-1 text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded-md text-xs font-bold whitespace-nowrap">
                                                 <AlertTriangle className="w-3 h-3" /> KRİTİK
                                             </span>
                                         )}
@@ -1244,22 +1245,22 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
             <div className="animate-fade-in-up space-y-6">
 
                {/* Trend Sub-Navigation */}
-               <div className="flex flex-wrap items-center justify-between gap-4 p-1 bg-slate-100 rounded-xl w-full md:w-fit">
+               <div className="flex flex-wrap items-center justify-between gap-4 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-full md:w-fit">
                   <button 
                     onClick={() => setTrendSubTab('all')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${trendSubTab === 'all' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${trendSubTab === 'all' ? 'bg-white dark:bg-slate-600 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
                   >
                     <Activity className="w-4 h-4" /> Tüm Gelişim
                   </button>
                   <button 
                     onClick={() => setTrendSubTab('last3')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${trendSubTab === 'last3' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${trendSubTab === 'last3' ? 'bg-white dark:bg-slate-600 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
                   >
                     <TrendingUp className="w-4 h-4" /> Son 3 Sınav Analizi
                   </button>
                   <button 
                     onClick={() => setTrendSubTab('individual')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${trendSubTab === 'individual' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${trendSubTab === 'individual' ? 'bg-white dark:bg-slate-600 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
                   >
                     <LayoutGrid className="w-4 h-4" /> Sınav Karneleri (Tek Tek)
                   </button>
@@ -1271,7 +1272,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                      <div className="flex flex-wrap gap-2">
                         <button
                             onClick={() => setSelectedTrendLesson('Tümü')}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedTrendLesson === 'Tümü' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border border-slate-200'}`}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedTrendLesson === 'Tümü' ? 'bg-slate-800 dark:bg-slate-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}`}
                         >
                             Tüm Dersler
                         </button>
@@ -1281,8 +1282,8 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                 onClick={() => setSelectedTrendLesson(config.label)}
                                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all 
                                     ${selectedTrendLesson === config.label 
-                                        ? `bg-brand-50 text-brand-700 border border-brand-200 ring-2 ring-brand-100` 
-                                        : 'bg-white text-slate-600 border border-slate-200'}`}
+                                        ? `bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 border border-brand-200 dark:border-brand-800 ring-2 ring-brand-100 dark:ring-brand-800` 
+                                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}`}
                             >
                                 <config.icon className="w-4 h-4" style={{ color: selectedTrendLesson === config.label ? config.color : undefined }} />
                                 {config.label}
@@ -1292,8 +1293,8 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
 
                     <div className={`grid gap-6 ${selectedTrendLesson === 'Tümü' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
                         {displayedTrendLessons.map(([lessonKey, config]) => (
-                            <div key={lessonKey} className={`bg-white p-6 rounded-3xl shadow-sm border border-slate-200 ${selectedTrendLesson !== 'Tümü' ? 'min-h-[400px]' : ''}`}>
-                                <h3 className="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
+                            <div key={lessonKey} className={`bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 ${selectedTrendLesson !== 'Tümü' ? 'min-h-[400px]' : ''}`}>
+                                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2 flex items-center gap-2">
                                     <config.icon className="w-5 h-5" style={{ color: config.color }} />
                                     {config.label} Gelişimi
                                 </h3>
@@ -1301,11 +1302,11 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                     {globalTrendData.length > 0 ? (
                                     <ResponsiveContainer width="100%" height="100%">
                                         <LineChart data={globalTrendData}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.1} />
                                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 10}} dy={10} interval="preserveStartEnd" />
                                             <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} domain={[0, 'auto']} width={30} />
                                             <Tooltip 
-                                                contentStyle={{backgroundColor: '#fff', borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                                                contentStyle={{backgroundColor: 'var(--tooltip-bg, #fff)', borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
                                                 formatter={(value: any) => [`${value} Net`, 'Net']}
                                                 labelStyle={{color: '#64748b', marginBottom: '0.25rem'}}
                                             />
@@ -1324,7 +1325,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                             />
                                         </LineChart>
                                     </ResponsiveContainer>
-                                    ) : <div className="h-full flex items-center justify-center text-slate-400">Veri yok.</div>}
+                                    ) : <div className="h-full flex items-center justify-center text-slate-400 dark:text-slate-500">Veri yok.</div>}
                                 </div>
                             </div>
                         ))}
@@ -1335,9 +1336,9 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                {/* SUB-VIEW 2: LAST 3 EXAMS */}
                {trendSubTab === 'last3' && (
                    <div className="space-y-6">
-                       <div className="bg-gradient-to-r from-brand-600 to-indigo-700 text-white p-6 rounded-3xl mb-6">
+                       <div className="bg-gradient-to-r from-brand-600 to-indigo-700 dark:from-brand-800 dark:to-indigo-900 text-white p-6 rounded-3xl mb-6">
                            <h3 className="text-xl font-bold mb-2">Son 3 Deneme Performans Özeti</h3>
-                           <p className="text-brand-100">Son 3 sınavındaki net değişimlerini analiz ederek anlık durumunu tespit ettik.</p>
+                           <p className="text-brand-100 dark:text-brand-200">Son 3 sınavındaki net değişimlerini analiz ederek anlık durumunu tespit ettik.</p>
                        </div>
 
                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1346,13 +1347,13 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                if (last3Data.length === 0) return null;
 
                                return (
-                                   <div key={config.label} className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
+                                   <div key={config.label} className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden">
                                        <div className="flex justify-between items-start mb-4">
                                             <div className="flex items-center gap-2">
-                                                <div className="p-2 rounded-lg bg-slate-50 text-slate-600">
+                                                <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
                                                     <config.icon className="w-5 h-5" style={{ color: config.color }} />
                                                 </div>
-                                                <span className="font-bold text-slate-700">{config.label}</span>
+                                                <span className="font-bold text-slate-700 dark:text-slate-200">{config.label}</span>
                                             </div>
                                             {getTrendIcon(last3Data, config.label)}
                                        </div>
@@ -1361,7 +1362,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <BarChart data={last3Data}>
                                                     <XAxis dataKey="date" tick={{fontSize: 10}} axisLine={false} tickLine={false} />
-                                                    <Tooltip cursor={{fill: 'transparent'}} contentStyle={{borderRadius: '8px'}} />
+                                                    <Tooltip cursor={{fill: 'transparent'}} contentStyle={{borderRadius: '8px', backgroundColor: 'var(--tooltip-bg, #fff)'}} />
                                                     <Bar dataKey={config.label} fill={config.color} radius={[4, 4, 0, 0]} barSize={40}>
                                                         <Cell key={`cell-${0}`} fillOpacity={0.4} />
                                                         <Cell key={`cell-${1}`} fillOpacity={0.6} />
@@ -1383,24 +1384,24 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                        {[...globalTrendData].reverse().map((exam, idx) => (
                            <div 
                                 key={idx} 
-                                className={`bg-white rounded-3xl border border-slate-200 shadow-sm p-6 flex flex-col md:flex-row gap-8 items-center transition-all hover:border-brand-300 hover:shadow-md cursor-pointer ${viewScope === exam.id ? 'ring-2 ring-brand-500' : ''}`}
+                                className={`bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 flex flex-col md:flex-row gap-8 items-center transition-all hover:border-brand-300 dark:hover:border-brand-600 hover:shadow-md cursor-pointer ${viewScope === exam.id ? 'ring-2 ring-brand-500 dark:ring-brand-500' : ''}`}
                                 onClick={() => setViewScope(exam.id)} // Click to focus this exam set context
                            >
                                {/* Exam Info */}
-                               <div className="w-full md:w-1/4 flex flex-col gap-2 border-b md:border-b-0 md:border-r border-slate-100 pb-4 md:pb-0 md:pr-4">
+                               <div className="w-full md:w-1/4 flex flex-col gap-2 border-b md:border-b-0 md:border-r border-slate-100 dark:border-slate-700 pb-4 md:pb-0 md:pr-4">
                                    <div className="flex items-center gap-2">
-                                        <h4 className="font-bold text-lg text-slate-800 line-clamp-2">{exam.name}</h4>
-                                        {viewScope === exam.id && <span className="bg-brand-100 text-brand-700 text-xs px-2 py-0.5 rounded-full font-bold">Seçili</span>}
+                                        <h4 className="font-bold text-lg text-slate-800 dark:text-slate-100 line-clamp-2">{exam.name}</h4>
+                                        {viewScope === exam.id && <span className="bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 text-xs px-2 py-0.5 rounded-full font-bold">Seçili</span>}
                                    </div>
-                                   <div className="flex items-center gap-2 text-slate-500 text-sm">
+                                   <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
                                        <Calendar className="w-4 h-4" />
                                        {exam.date}
                                    </div>
-                                   <div className="mt-2 bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
-                                       <span className="block text-xs text-slate-400 font-bold uppercase">Toplam Puan</span>
-                                       <span className="text-2xl font-black text-brand-600">{exam.totalScore}</span>
+                                   <div className="mt-2 bg-slate-50 dark:bg-slate-700 p-3 rounded-xl border border-slate-100 dark:border-slate-600 text-center">
+                                       <span className="block text-xs text-slate-400 dark:text-slate-500 font-bold uppercase">Toplam Puan</span>
+                                       <span className="text-2xl font-black text-brand-600 dark:text-brand-400">{exam.totalScore}</span>
                                    </div>
-                                   <div className="text-xs text-slate-400 mt-2 flex items-center gap-1 justify-center md:justify-start">
+                                   <div className="text-xs text-slate-400 dark:text-slate-500 mt-2 flex items-center gap-1 justify-center md:justify-start">
                                        <LayoutGrid className="w-3 h-3" />
                                        Detaylı analiz için tıklayın
                                    </div>
@@ -1414,10 +1415,10 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                             layout="horizontal"
                                             margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                                         >
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                            <XAxis dataKey="name" tick={{fontSize: 11}} axisLine={false} tickLine={false} interval={0} />
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                                            <XAxis dataKey="name" tick={{fontSize: 11, fill: '#64748b'}} axisLine={false} tickLine={false} interval={0} />
                                             <YAxis hide />
-                                            <Tooltip cursor={{fill: 'transparent'}} formatter={(val) => [`${val} Net`, '']} />
+                                            <Tooltip cursor={{fill: 'transparent'}} formatter={(val) => [`${val} Net`, '']} contentStyle={{backgroundColor: 'var(--tooltip-bg, #fff)'}} />
                                             <Bar dataKey="net" radius={[4, 4, 0, 0]}>
                                                 {Object.values(LESSON_CONFIG).map((entry, index) => (
                                                     <Cell key={`cell-${index}`} fill={entry.color} />

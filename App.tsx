@@ -5,13 +5,35 @@ import AnalysisDashboard from './components/AnalysisDashboard';
 import HistoryDashboard from './components/HistoryDashboard';
 import { analyzeExamFiles } from './services/geminiService';
 import { ComprehensiveAnalysis, AppState } from './types';
-import { AlertCircle, RefreshCcw, Brain } from 'lucide-react';
+import { AlertCircle, RefreshCcw, Brain, Moon, Sun } from 'lucide-react';
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(AppState.IDLE);
   const [result, setResult] = useState<ComprehensiveAnalysis | null>(null);
   const [history, setHistory] = useState<ComprehensiveAnalysis[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  // Theme State
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
+    }
+    return 'light';
+  });
+
+  // Apply Theme Class
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
 
   // Load history from local storage on mount
   useEffect(() => {
@@ -156,30 +178,39 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-brand-100 selection:text-brand-900">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-brand-100 selection:text-brand-900 transition-colors duration-300">
       
       {/* Background decoration */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-200/30 rounded-full blur-3xl" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-200/30 rounded-full blur-3xl" />
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-200/30 dark:bg-blue-900/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-200/30 dark:bg-purple-900/10 rounded-full blur-3xl" />
       </div>
 
       <div className="relative z-10 flex flex-col min-h-screen">
         
         {/* Navbar */}
-        <header className="w-full glass-panel sticky top-0 z-50 border-b border-slate-200/60">
+        <header className="w-full glass-panel sticky top-0 z-50 border-b border-slate-200/60 dark:border-slate-800/60">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
             <div className="flex items-center gap-4 cursor-pointer group" onClick={handleReset}>
-              <div className="relative flex items-center justify-center w-16 h-16 bg-white rounded-2xl border-2 border-brand-100 shadow-lg group-hover:scale-105 transition-transform">
-                 <Brain className="w-10 h-10 text-brand-600" />
+              <div className="relative flex items-center justify-center w-16 h-16 bg-white dark:bg-slate-800 rounded-2xl border-2 border-brand-100 dark:border-slate-700 shadow-lg group-hover:scale-105 transition-transform">
+                 <Brain className="w-10 h-10 text-brand-600 dark:text-brand-400" />
               </div>
               <div>
-                <h1 className="text-2xl font-black text-slate-800 tracking-tight group-hover:text-brand-700 transition-colors">
+                <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight group-hover:text-brand-700 dark:group-hover:text-brand-400 transition-colors">
                     Kukul.io
                 </h1>
-                <p className="text-[10px] text-slate-500 font-bold tracking-widest uppercase">Eğitim ve Veri Analisti</p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold tracking-widest uppercase">Eğitim ve Veri Analisti</p>
               </div>
             </div>
+
+            {/* Theme Toggle Button */}
+            <button 
+              onClick={toggleTheme}
+              className="p-3 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700"
+              aria-label="Toggle Dark Mode"
+            >
+              {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+            </button>
           </div>
         </header>
 
@@ -188,10 +219,10 @@ const App: React.FC = () => {
           
           {appState === AppState.IDLE && (
              <div className="w-full max-w-3xl mx-auto text-center mb-8 animate-fade-in-up">
-                <h2 className="text-4xl md:text-5xl font-black text-slate-800 tracking-tight mb-2">
-                  Sınav ve Ödevlerinizde <span className="text-brand-600">Nokta Atışı</span> Yapın
+                <h2 className="text-4xl md:text-5xl font-black text-slate-800 dark:text-slate-100 tracking-tight mb-2">
+                  Sınav ve Ödevlerinizde <span className="text-brand-600 dark:text-brand-400">Nokta Atışı</span> Yapın
                 </h2>
-                <p className="text-slate-600 mt-4 text-lg">Ödevini veya sınav sonucunu yükle, yapay zeka senin için analiz etsin, eksiklerini bulsun ve çalışma planını hazırlasın.</p>
+                <p className="text-slate-600 dark:text-slate-400 mt-4 text-lg">Ödevini veya sınav sonucunu yükle, yapay zeka senin için analiz etsin, eksiklerini bulsun ve çalışma planını hazırlasın.</p>
              </div>
           )}
 
@@ -214,15 +245,15 @@ const App: React.FC = () => {
           ) : null}
 
           {appState === AppState.ERROR && (
-            <div className="w-full max-w-md mx-auto mt-8 bg-red-50 border border-red-200 rounded-2xl p-6 text-center animate-shake">
-                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <AlertCircle className="w-6 h-6 text-red-600" />
+            <div className="w-full max-w-md mx-auto mt-8 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-6 text-center animate-shake">
+                <div className="w-12 h-12 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-red-900 mb-2">Hata Oluştu</h3>
-                <p className="text-red-700 mb-6">{error}</p>
+                <h3 className="text-lg font-semibold text-red-900 dark:text-red-200 mb-2">Hata Oluştu</h3>
+                <p className="text-red-700 dark:text-red-300 mb-6">{error}</p>
                 <button 
                   onClick={handleReset}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-red-200 text-red-700 font-medium rounded-lg hover:bg-red-50 transition-colors shadow-sm"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 font-medium rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors shadow-sm"
                 >
                   <RefreshCcw className="w-4 h-4" />
                   Tekrar Dene
@@ -242,7 +273,7 @@ const App: React.FC = () => {
         </main>
         
         {/* Footer */}
-        <footer className="py-6 text-center text-slate-400 text-sm">
+        <footer className="py-6 text-center text-slate-400 dark:text-slate-600 text-sm">
           <p>© {new Date().getFullYear()} Kukul.io. kukul.ai 0.62 tarafından desteklenmektedir.</p>
         </footer>
 
