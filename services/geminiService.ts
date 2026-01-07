@@ -92,7 +92,7 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
             executive_summary: {
                 type: Type.OBJECT, 
                 properties: {
-                    mevcut_durum: { type: Type.STRING, description: "Markdown formatında, öğrencinin durumunu 4 ana başlık altında en az 400 kelime ile anlatan çok detaylı rapor." },
+                    mevcut_durum: { type: Type.STRING, description: "Markdown formatında, 'Dünyanın En İyi LGS Koçu' personasıyla yazılmış 4-5 maddelik analiz raporu. HER MADDE, verileri (doğru/yanlış sayıları, yüzdeler) birbiriyle kıyaslayarak (örn: 'Matematik'teki başarını Fen ile kıyasladığımda...') derinlemesine yorumlamalıdır. Sadece istatistik listeleme, 'neden' ve 'sonuç' ilişkisi kur. ÖNEMLİ: Metin içinde ders isimlerini mutlaka <span class='text-blue-500 font-bold'>Matematik</span>, <span class='text-red-500 font-bold'>Türkçe</span>, <span class='text-green-500 font-bold'>Fen Bilimleri</span> gibi HTML span etiketleriyle renklendir. Kritik uyarıları **kalın** yaz." },
                     guclu_yonler: { type: Type.ARRAY, items: { type: Type.STRING } },
                     zayif_yonler: { type: Type.ARRAY, items: { type: Type.STRING } },
                     lgs_tahmini_yuzdelik: { type: Type.NUMBER }

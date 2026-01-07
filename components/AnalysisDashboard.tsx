@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { ComprehensiveAnalysis, TopicAnalysis } from '../types';
 import { 
@@ -125,59 +124,80 @@ const formatLGSScore = (value: number) => {
     return (integerPart + roundedDecimal).toFixed(3);
 };
 
-// Helper to render Markdown-like text
-const renderBold = (text: string) => {
-  // Regex: 1. **Bold** patterns, 2. Duration patterns like (Süre: 20 dk) or (20 dk) or Süre: 15dk
-  const parts = text.split(/(\*\*.*?\*\*|\(Süre:.*?\)|Süre:.*?dk|\d+\s*dk(?!\w))/g);
-  
-  return parts.map((part, j) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={j} className="font-bold text-slate-900 dark:text-slate-100">{part.slice(2, -2)}</strong>;
-    }
-    // Highlight time duration patterns
-    if (part.includes('dk') || part.includes('Süre:')) {
-         return <span key={j} className="inline-flex items-center gap-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-xs font-bold mx-1 border border-blue-100 dark:border-blue-800 whitespace-nowrap"><Timer className="w-3 h-3" /> {part.replace(/[()]/g, '')}</span>
-    }
-    return part;
-  });
+// Helper to safely render text with HTML spans (for colors) and Markdown-like bold
+const SafeHtmlText = ({ content }: { content: string }) => {
+    // 1. Split by **bold**
+    const parts = content.split(/(\*\*.*?\*\*)/g);
+    
+    return (
+        <span>
+            {parts.map((part, index) => {
+                if (part.startsWith('**') && part.endsWith('**')) {
+                    // Remove asterisks and check for HTML
+                    const inner = part.slice(2, -2);
+                     return <strong key={index} className="font-bold text-slate-900 dark:text-slate-100" dangerouslySetInnerHTML={{ __html: inner }} />;
+                }
+                // Render regular text, allowing HTML spans to work
+                return <span key={index} dangerouslySetInnerHTML={{ __html: part }} />;
+            })}
+        </span>
+    );
 };
 
 const FormattedText: React.FC<{ text: string, className?: string }> = ({ text, className = "" }) => {
   if (!text) return null;
 
   return (
-    <div className={`space-y-3 ${className}`}>
+    <div className={`space-y-4 ${className}`}>
       {text.split('\n').map((line, i) => {
         const trimmed = line.trim();
+        
+        // Headers
         if (trimmed.startsWith('###')) {
           return (
-            <h3 key={i} className="text-lg font-bold text-brand-700 dark:text-brand-400 mt-4 mb-2 border-b border-slate-200 dark:border-slate-700 pb-1 flex items-center gap-2">
-              {trimmed.replace(/###/g, '').trim()}
+            <h3 key={i} className="text-xl font-bold text-brand-700 dark:text-brand-400 mt-6 mb-3 border-b border-slate-200 dark:border-slate-700 pb-2 flex items-center gap-2">
+              <SafeHtmlText content={trimmed.replace(/###/g, '').trim()} />
             </h3>
           );
         }
+        
+        // List items
         if (trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.startsWith('* ')) {
           return (
-            <div key={i} className="flex gap-3 ml-1 mb-2 items-start group">
+            <div key={i} className="flex gap-3 ml-1 mb-3 items-start group">
               <span className="text-brand-500 mt-1.5 shrink-0 bg-brand-50 dark:bg-brand-900 rounded-full p-0.5">
-                  <CheckCircle2 className="w-3 h-3" />
+                  <CheckCircle2 className="w-4 h-4" />
               </span>
-              <span className="leading-relaxed">{renderBold(trimmed.replace(/^[-•*]\s*/, ''))}</span>
+              <span className="leading-relaxed text-slate-700 dark:text-slate-200">
+                  <SafeHtmlText content={trimmed.replace(/^[-•*]\s*/, '')} />
+              </span>
             </div>
           );
         }
+        
+        // Numbered lists (likely the 4-5 key points)
         if (/^\d+\./.test(trimmed)) {
            return (
-            <div key={i} className="flex gap-4 ml-1 mb-3 items-start bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700 hover:border-brand-200 dark:hover:border-brand-800 transition-colors">
-               <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-brand-600 dark:text-brand-400 text-sm font-bold shrink-0 shadow-sm border border-slate-200 dark:border-slate-600">
+            <div key={i} className="flex gap-4 ml-1 mb-4 items-start bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700 hover:border-brand-200 dark:hover:border-brand-800 transition-colors shadow-sm">
+               <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-white dark:bg-slate-700 text-brand-600 dark:text-brand-400 text-base font-bold shrink-0 shadow-sm border border-slate-200 dark:border-slate-600">
                    {trimmed.split('.')[0]}
                </span>
-               <span className="leading-relaxed mt-0.5 text-slate-700 dark:text-slate-300 font-medium">{renderBold(trimmed.replace(/^\d+\.\s*/, ''))}</span>
+               <span className="leading-relaxed mt-0.5 text-slate-700 dark:text-slate-200 font-medium">
+                   <SafeHtmlText content={trimmed.replace(/^\d+\.\s*/, '')} />
+               </span>
             </div>
            )
         }
-        if (!trimmed) return <div key={i} className="h-1"></div>;
-        return <p key={i} className="leading-relaxed text-justify">{renderBold(line)}</p>;
+        
+        // Empty lines
+        if (!trimmed) return <div key={i} className="h-2"></div>;
+        
+        // Regular paragraphs
+        return (
+            <p key={i} className="leading-relaxed text-justify text-slate-700 dark:text-slate-300">
+                <SafeHtmlText content={trimmed} />
+            </p>
+        );
       })}
     </div>
   );
