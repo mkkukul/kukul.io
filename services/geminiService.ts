@@ -92,7 +92,7 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
             executive_summary: {
                 type: Type.OBJECT, 
                 properties: {
-                    mevcut_durum: { type: Type.STRING, description: "Markdown formatında, 'Dünyanın En İyi LGS Koçu' personasıyla yazılmış 4-5 maddelik analiz raporu. HER MADDE, verileri (doğru/yanlış sayıları, yüzdeler) birbiriyle kıyaslayarak (örn: 'Matematik'teki başarını Fen ile kıyasladığımda...') derinlemesine yorumlamalıdır. Sadece istatistik listeleme, 'neden' ve 'sonuç' ilişkisi kur. ÖNEMLİ: Metin içinde ders isimlerini mutlaka <span class='text-blue-500 font-bold'>Matematik</span>, <span class='text-red-500 font-bold'>Türkçe</span>, <span class='text-green-500 font-bold'>Fen Bilimleri</span> gibi HTML span etiketleriyle renklendir. Kritik uyarıları **kalın** yaz." },
+                    mevcut_durum: { type: Type.STRING, description: "Markdown formatında, 'Dünyanın En İyi LGS Koçu' personasıyla yazılmış analiz raporu. RAPOR FORMATI: Her ders (Matematik, Türkçe, Fen, İnkılap, Din, İngilizce) için AYRI BİR MADDE (bullet point) oluşturarak o dersteki performansı, konu eksiklerini ve önceki sınavlarla karşılaştırmasını yaz. Ders isimlerini HTML <span> etiketleri ve parlak renk sınıfları ile renklendir: <span class='text-blue-300 font-bold'>Matematik</span>, <span class='text-red-300 font-bold'>Türkçe</span>, <span class='text-emerald-300 font-bold'>Fen Bilimleri</span>, <span class='text-amber-300 font-bold'>T.C. İnkılap Tarihi</span>, <span class='text-pink-300 font-bold'>İngilizce</span>, <span class='text-purple-300 font-bold'>Din Kültürü</span>. Metin içinde kritik uyarıları **kalın** yaz." },
                     guclu_yonler: { type: Type.ARRAY, items: { type: Type.STRING } },
                     zayif_yonler: { type: Type.ARRAY, items: { type: Type.STRING } },
                     lgs_tahmini_yuzdelik: { type: Type.NUMBER }
@@ -234,8 +234,24 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
     
     console.error(`${logPrefix} ---------------- CRITICAL API ERROR ----------------`);
     
-    // 1. Log Raw Error Object (crucial for debugging)
+    // 1. Log Raw Error Object
     console.error(`${logPrefix} Raw Error Object:`, error);
+
+    // 2. DETAILED SERIALIZATION (Captures hidden properties)
+    try {
+        const errorObj = error || {};
+        const fullErrorString = JSON.stringify(error, Object.getOwnPropertyNames(errorObj), 2);
+        console.error(`${logPrefix} FULL ERROR DETAILS (JSON):`, fullErrorString);
+    } catch (stringifyError) {
+        console.error(`${logPrefix} Could not stringify error object (likely circular):`, stringifyError);
+    }
+
+    // 3. Explicit SDK Error Fields Check
+    if (typeof error === 'object' && error !== null) {
+        if (error.response) console.error(`${logPrefix} Error Response Data:`, JSON.stringify(error.response, null, 2));
+        if (error.body) console.error(`${logPrefix} Error Body Data:`, JSON.stringify(error.body, null, 2));
+        if (error.errorDetails) console.error(`${logPrefix} Error Details:`, JSON.stringify(error.errorDetails, null, 2));
+    }
 
     // Extract standard HTTP error fields
     const status = error.status || error.response?.status;
@@ -244,23 +260,6 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
     console.error(`${logPrefix} Status:`, status, statusText);
     console.error(`${logPrefix} Message:`, error.message);
     
-    // Debugging logs - Full details
-    if (error.response) {
-        try {
-            console.error(`${logPrefix} Full API Response JSON:`, JSON.stringify(error.response, null, 2));
-        } catch(e) { console.error(`${logPrefix} Could not stringify response`, e); }
-    }
-    if (error.body) {
-         try {
-            console.error(`${logPrefix} Error Body JSON:`, JSON.stringify(error.body, null, 2));
-         } catch(e) { /* ignore circular */ }
-    }
-    if (error.errorDetails) {
-         try {
-            console.error(`${logPrefix} Error Details:`, JSON.stringify(error.errorDetails, null, 2));
-         } catch(e) { /* ignore circular */ }
-    }
-
     // --- CUSTOMIZED ERROR MESSAGES FOR UI ---
     let userMessage = "Analiz sırasında beklenmeyen bir teknik hata oluştu.";
 

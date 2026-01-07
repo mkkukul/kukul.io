@@ -44,7 +44,7 @@ const LGS_LIMITS: Record<string, number> = {
 
 // Fallback for non-standard names with improved matching for new subjects
 const getLessonConfig = (lessonName: string) => {
-  const lower = lessonName.toLocaleLowerCase('tr-TR');
+  const lower = (lessonName || "").toLocaleLowerCase('tr-TR');
   
   // Science
   if (lower.includes('fen')) return LESSON_CONFIG['Fen Bilimleri'];
@@ -70,7 +70,7 @@ const getLessonConfig = (lessonName: string) => {
       return LESSON_CONFIG['İngilizce'];
   }
 
-  return LESSON_CONFIG[lessonName] || { color: '#64748b', icon: BookOpen, label: lessonName };
+  return LESSON_CONFIG[lessonName] || { color: '#64748b', icon: BookOpen, label: lessonName || 'Ders' };
 };
 
 // Helper to get limit based on lesson name
@@ -126,6 +126,7 @@ const formatLGSScore = (value: number) => {
 
 // Helper to safely render text with HTML spans (for colors) and Markdown-like bold
 const SafeHtmlText = ({ content }: { content: string }) => {
+    if (!content) return null;
     // 1. Split by **bold**
     const parts = content.split(/(\*\*.*?\*\*)/g);
     
@@ -135,7 +136,7 @@ const SafeHtmlText = ({ content }: { content: string }) => {
                 if (part.startsWith('**') && part.endsWith('**')) {
                     // Remove asterisks and check for HTML
                     const inner = part.slice(2, -2);
-                     return <strong key={index} className="font-bold text-slate-900 dark:text-slate-100" dangerouslySetInnerHTML={{ __html: inner }} />;
+                     return <strong key={index} className="font-bold text-inherit" dangerouslySetInnerHTML={{ __html: inner }} />;
                 }
                 // Render regular text, allowing HTML spans to work
                 return <span key={index} dangerouslySetInnerHTML={{ __html: part }} />;
@@ -144,8 +145,11 @@ const SafeHtmlText = ({ content }: { content: string }) => {
     );
 };
 
-const FormattedText: React.FC<{ text: string, className?: string }> = ({ text, className = "" }) => {
+const FormattedText: React.FC<{ text: string, className?: string, textColor?: string }> = ({ text, className = "", textColor }) => {
   if (!text) return null;
+
+  // Use passed textColor or default to slate-700/300 if not provided
+  const colorClass = textColor || "text-slate-700 dark:text-slate-300";
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -155,7 +159,7 @@ const FormattedText: React.FC<{ text: string, className?: string }> = ({ text, c
         // Headers
         if (trimmed.startsWith('###')) {
           return (
-            <h3 key={i} className="text-xl font-bold text-brand-700 dark:text-brand-400 mt-6 mb-3 border-b border-slate-200 dark:border-slate-700 pb-2 flex items-center gap-2">
+            <h3 key={i} className={`text-xl font-bold mt-6 mb-3 border-b border-white/20 pb-2 flex items-center gap-2 ${textColor || 'text-brand-700 dark:text-brand-400'}`}>
               <SafeHtmlText content={trimmed.replace(/###/g, '').trim()} />
             </h3>
           );
@@ -165,10 +169,10 @@ const FormattedText: React.FC<{ text: string, className?: string }> = ({ text, c
         if (trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.startsWith('* ')) {
           return (
             <div key={i} className="flex gap-3 ml-1 mb-3 items-start group">
-              <span className="text-brand-500 mt-1.5 shrink-0 bg-brand-50 dark:bg-brand-900 rounded-full p-0.5">
+              <span className={`mt-1.5 shrink-0 rounded-full p-0.5 ${textColor ? 'text-white/80 bg-white/20' : 'text-brand-500 bg-brand-50 dark:bg-brand-900'}`}>
                   <CheckCircle2 className="w-4 h-4" />
               </span>
-              <span className="leading-relaxed text-slate-700 dark:text-slate-200">
+              <span className={`leading-relaxed ${colorClass}`}>
                   <SafeHtmlText content={trimmed.replace(/^[-•*]\s*/, '')} />
               </span>
             </div>
@@ -178,11 +182,11 @@ const FormattedText: React.FC<{ text: string, className?: string }> = ({ text, c
         // Numbered lists (likely the 4-5 key points)
         if (/^\d+\./.test(trimmed)) {
            return (
-            <div key={i} className="flex gap-4 ml-1 mb-4 items-start bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700 hover:border-brand-200 dark:hover:border-brand-800 transition-colors shadow-sm">
-               <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-white dark:bg-slate-700 text-brand-600 dark:text-brand-400 text-base font-bold shrink-0 shadow-sm border border-slate-200 dark:border-slate-600">
+            <div key={i} className={`flex gap-4 ml-1 mb-4 items-start p-4 rounded-xl transition-colors shadow-sm ${textColor ? 'bg-white/10 border border-white/10 hover:bg-white/20' : 'bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 hover:border-brand-200 dark:hover:border-brand-800'}`}>
+               <span className={`flex items-center justify-center w-8 h-8 rounded-lg text-base font-bold shrink-0 shadow-sm ${textColor ? 'bg-white text-indigo-900' : 'bg-white dark:bg-slate-700 text-brand-600 dark:text-brand-400 border border-slate-200 dark:border-slate-600'}`}>
                    {trimmed.split('.')[0]}
                </span>
-               <span className="leading-relaxed mt-0.5 text-slate-700 dark:text-slate-200 font-medium">
+               <span className={`leading-relaxed mt-0.5 font-medium ${colorClass}`}>
                    <SafeHtmlText content={trimmed.replace(/^\d+\.\s*/, '')} />
                </span>
             </div>
@@ -194,7 +198,7 @@ const FormattedText: React.FC<{ text: string, className?: string }> = ({ text, c
         
         // Regular paragraphs
         return (
-            <p key={i} className="leading-relaxed text-justify text-slate-700 dark:text-slate-300">
+            <p key={i} className={`leading-relaxed text-justify ${colorClass}`}>
                 <SafeHtmlText content={trimmed} />
             </p>
         );
@@ -205,53 +209,57 @@ const FormattedText: React.FC<{ text: string, className?: string }> = ({ text, c
 
 // --- AGGREGATION LOGIC ---
 const aggregateAnalyses = (analyses: ComprehensiveAnalysis[]): ComprehensiveAnalysis => {
-    if (analyses.length === 0) return analyses[0]; // Should not happen
+    if (!analyses || analyses.length === 0) return {} as ComprehensiveAnalysis;
     if (analyses.length === 1) return analyses[0];
 
     // Use the latest analysis as the "base" for metadata, info, and latest comments
-    const latest = analyses.reduce((prev, current) => (prev.savedAt || 0) > (current.savedAt || 0) ? prev : current);
+    // Filter out invalid entries first
+    const validAnalyses = analyses.filter(a => a && a.savedAt);
+    if (validAnalyses.length === 0) return analyses[0];
+
+    const latest = validAnalyses.reduce((prev, current) => (prev.savedAt || 0) > (current.savedAt || 0) ? prev : current);
     
     // Aggregate Topic Analysis
     const topicMap = new Map<string, TopicAnalysis>();
     
     // Calculate Average LGS Percentile
-    const validPercentiles = analyses
+    const validPercentiles = validAnalyses
         .map(a => a.executive_summary?.lgs_tahmini_yuzdelik)
         .filter(p => typeof p === 'number' && !isNaN(p));
     
     const avgPercentile = validPercentiles.length > 0
         ? validPercentiles.reduce((a, b) => a + b, 0) / validPercentiles.length
-        : latest.executive_summary.lgs_tahmini_yuzdelik;
+        : latest.executive_summary?.lgs_tahmini_yuzdelik || 0;
 
-    analyses.forEach(analysis => {
+    validAnalyses.forEach(analysis => {
         (analysis.konu_analizi || []).forEach(topic => {
             const key = `${topic.ders}-${topic.konu}`;
             if (!topicMap.has(key)) {
                 topicMap.set(key, { ...topic });
             } else {
                 const existing = topicMap.get(key)!;
-                existing.dogru += topic.dogru;
-                existing.yanlis += topic.yanlis;
-                existing.bos += topic.bos;
-                existing.lgs_kayip_puan += topic.lgs_kayip_puan;
+                existing.dogru += topic.dogru || 0;
+                existing.yanlis += topic.yanlis || 0;
+                existing.bos += topic.bos || 0;
+                existing.lgs_kayip_puan += topic.lgs_kayip_puan || 0;
             }
         });
     });
 
     const aggregatedTopics = Array.from(topicMap.values()).map(t => ({
         ...t,
-        basari_yuzdesi: (t.dogru / (t.dogru + t.yanlis + t.bos)) * 100,
-        lgs_kayip_puan: Number(t.lgs_kayip_puan.toFixed(2))
+        basari_yuzdesi: ((t.dogru || 0) / ((t.dogru || 0) + (t.yanlis || 0) + (t.bos || 0) || 1)) * 100,
+        lgs_kayip_puan: Number((t.lgs_kayip_puan || 0).toFixed(2))
     }));
 
     return {
         ...latest,
         konu_analizi: aggregatedTopics,
-        exams_history: analyses.flatMap(a => a.exams_history).filter((v,i,a)=>a.findIndex(t=>(t.tarih===v.tarih && t.sinav_adi===v.sinav_adi))===i),
+        exams_history: validAnalyses.flatMap(a => a.exams_history || []).filter((v,i,a)=> v && a.findIndex(t=>(t && v && t.tarih===v.tarih && t.sinav_adi===v.sinav_adi))===i),
         executive_summary: {
             ...latest.executive_summary,
             lgs_tahmini_yuzdelik: avgPercentile,
-            mevcut_durum: `### 📊 GENEL BAKIŞ MODU (${analyses.length} Dosya Kaydı)\n\nŞu anda **tüm denemelerin ortalaması ve kümülatif verileri** üzerinden analiz yapıyorsunuz. Aşağıdaki veriler, yüklenen tüm sınavların toplam performansını yansıtır.\n\n` + latest.executive_summary.mevcut_durum
+            mevcut_durum: `### 📊 GENEL BAKIŞ MODU (${validAnalyses.length} Dosya Kaydı)\n\nŞu anda **tüm denemelerin ortalaması ve kümülatif verileri** üzerinden analiz yapıyorsunuz. Aşağıdaki veriler, yüklenen tüm sınavların toplam performansını yansıtır.\n\n` + (latest.executive_summary?.mevcut_durum || "")
         }
     };
 };
@@ -328,12 +336,15 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
 
   // Combine current data and history into a unique list
   const allAnalyses = useMemo(() => {
-    const list = [data, ...history];
+    // Filter out nulls just in case
+    const list = [data, ...history].filter(Boolean);
     return list.filter((v,i,a)=>a.findIndex(t=>(t.id===v.id))===i);
   }, [data, history]);
 
   // Determine ACTIVE DATA based on Scope
   const activeData = useMemo(() => {
+      if (!allAnalyses || allAnalyses.length === 0) return data;
+      
       if (viewScope === 'all') {
           return aggregateAnalyses(allAnalyses);
       }
@@ -351,14 +362,13 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
   const globalTrendData = useMemo(() => {
       const uniqueExamsMap = new Map<string, any>();
       
-      // Sort analyses by saved date (newest first) to prioritize metadata from latest analysis if duplicates exist
+      // Sort analyses by saved date (newest first)
       const sortedAnalyses = [...allAnalyses].sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
 
       sortedAnalyses.forEach(analysis => {
           (analysis.exams_history || []).forEach((exam, index) => {
-              // Create a robust Composite Key to detect duplicates across files
-              // Key: Date + Normalized Name + Score
-              // This prevents the same exam appearing multiple times if multiple analysis files contain the same history.
+              if (!exam) return;
+              
               const dateKey = exam.tarih ? exam.tarih.replace(/\s/g, '') : 'no-date';
               const nameKey = (exam.sinav_adi || 'sinav').trim().toLowerCase().replace(/\s+/g, '-');
               const scoreKey = exam.toplam_puan ? exam.toplam_puan.toString() : '0';
@@ -381,7 +391,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                   Object.keys(LESSON_CONFIG).forEach(k => row[LESSON_CONFIG[k].label] = 0);
 
                   (exam.ders_netleri || []).forEach(d => { 
-                      if(d.ders) {
+                      if(d && d.ders) {
                           const config = getLessonConfig(d.ders);
                           row[config.label] = d.net; 
                       }
@@ -423,7 +433,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
       return allTopics.map(topic => ({
           ...topic,
           // Force overwrite durum based on percentage if needed, or trust AI if it matches schema
-          durum: getStatusByPercentage(topic.basari_yuzdesi)
+          durum: getStatusByPercentage(topic.basari_yuzdesi || 0)
       }));
   }, [allTopics]);
   
@@ -468,13 +478,11 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
         return multiplier * valA.localeCompare(valB);
     }
     if (key === 'soru_dagilimi') {
-        return multiplier * (a.yanlis - b.yanlis);
+        return multiplier * ((a.yanlis || 0) - (b.yanlis || 0));
     }
     
     // Custom sort for the new "Net Kaybı" column
     if (key === 'net_kaybi') {
-        // Net loss is (Wrong / 3). Since 3 is constant, sorting by wrong answers is sufficient,
-        // but let's be explicit for clarity.
         const valA = (a.yanlis || 0) / 3;
         const valB = (b.yanlis || 0) / 3;
         return multiplier * (valA - valB);
@@ -487,7 +495,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
   });
 
   const chartData = selectedLessonForTopic === 'Genel'
-    ? [...processedTopics].sort((a, b) => b.lgs_kayip_puan - a.lgs_kayip_puan).slice(0, 15)
+    ? [...processedTopics].sort((a, b) => (b.lgs_kayip_puan || 0) - (a.lgs_kayip_puan || 0)).slice(0, 15)
     : sortedTopics;
 
   const handleSort = (key: string) => {
@@ -519,7 +527,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
     if (!activeData.exams_history || activeData.exams_history.length === 0) return null;
     
     // Filter exams with valid scores
-    const validExams = activeData.exams_history.filter(e => e.toplam_puan > 0);
+    const validExams = activeData.exams_history.filter(e => e && e.toplam_puan > 0);
     
     // Return the last valid exam, or the last one if none are valid (fallback)
     return validExams.length > 0 
@@ -549,7 +557,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
       : Object.entries(LESSON_CONFIG).filter(([key, config]) => config.label === selectedTrendLesson);
 
   const getTrendIcon = (data: any[], key: string) => {
-      if (data.length < 2) return null;
+      if (!data || data.length < 2) return null;
       const last = data[data.length - 1][key] || 0;
       const prev = data[data.length - 2][key] || 0;
       const diff = last - prev;
@@ -754,7 +762,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                     {viewScope === 'all' ? 'Genel Performans Analizi' : 'Sınav Detay Analizi'}
                 </h3>
                 <div className="relative z-10 text-slate-200">
-                    <FormattedText text={activeData.executive_summary?.mevcut_durum} className="text-slate-200" />
+                    <FormattedText text={activeData.executive_summary?.mevcut_durum || "Veri bulunamadı."} className="text-slate-200" textColor="text-slate-100" />
                 </div>
             </div>
 
@@ -812,7 +820,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                          <div className="text-center">
                              <div className="text-[10px] text-amber-800 dark:text-amber-500 font-bold uppercase">Hedef</div>
                              <div className="text-2xl font-black text-amber-600 dark:text-amber-500">
-                                %{activeData.simulasyon?.hedef_yuzdelik}
+                                %{activeData.simulasyon?.hedef_yuzdelik || 0}
                              </div>
                          </div>
                     </div>
