@@ -327,40 +327,59 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
 
   // --- DATA PREPARATION (Using activeData) ---
 
-  // 1. Chart Data from GLOBAL HISTORY (Used for Trends)
+  // 1. Chart Data from GLOBAL HISTORY (Used for Trends) - WITH STRICT DEDUPLICATION
   const globalTrendData = useMemo(() => {
-      return allAnalyses
-        .flatMap(analysis => {
-            // Extract all exams from each analysis file
-            return (analysis.exams_history || []).map((exam, index) => {
-                const row: any = {
+      const uniqueExamsMap = new Map<string, any>();
+      
+      // Sort analyses by saved date (newest first) to prioritize metadata from latest analysis if duplicates exist
+      const sortedAnalyses = [...allAnalyses].sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+
+      sortedAnalyses.forEach(analysis => {
+          (analysis.exams_history || []).forEach((exam, index) => {
+              // Create a robust Composite Key to detect duplicates across files
+              // Key: Date + Normalized Name + Score
+              // This prevents the same exam appearing multiple times if multiple analysis files contain the same history.
+              const dateKey = exam.tarih ? exam.tarih.replace(/\s/g, '') : 'no-date';
+              const nameKey = (exam.sinav_adi || 'sinav').trim().toLowerCase().replace(/\s+/g, '-');
+              const scoreKey = exam.toplam_puan ? exam.toplam_puan.toString() : '0';
+              
+              const uniqueKey = `${dateKey}_${nameKey}_${scoreKey}`;
+
+              if (!uniqueExamsMap.has(uniqueKey)) {
+                  const row: any = {
                     date: exam.tarih ? exam.tarih : new Date(analysis.savedAt || Date.now()).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }),
-                    fullDate: analysis.savedAt || Date.now(), // Fallback sort by upload time if date missing
+                    fullDate: exam.tarih ? new Date(exam.tarih).getTime() : (analysis.savedAt || Date.now()),
                     name: exam.sinav_adi?.length > 15 ? exam.sinav_adi.substring(0, 15) + '...' : (exam.sinav_adi || 'Sınav'),
+                    fullName: exam.sinav_adi,
                     id: analysis.id, // Keep reference to parent analysis
-                    uniqueId: `${analysis.id}-${index}`, // Unique key for lists
+                    uniqueId: uniqueKey, // Unique key for lists
                     totalScore: Number(exam.toplam_puan),
                     originalExam: exam
-                };
+                  };
 
-                // Initialize all known lessons to 0
-                Object.keys(LESSON_CONFIG).forEach(k => row[LESSON_CONFIG[k].label] = 0);
+                  // Initialize all known lessons to 0
+                  Object.keys(LESSON_CONFIG).forEach(k => row[LESSON_CONFIG[k].label] = 0);
 
-                (exam.ders_netleri || []).forEach(d => { 
-                    if(d.ders) {
-                        const config = getLessonConfig(d.ders);
-                        row[config.label] = d.net; 
-                    }
-                });
-                return row;
-            });
-        })
+                  (exam.ders_netleri || []).forEach(d => { 
+                      if(d.ders) {
+                          const config = getLessonConfig(d.ders);
+                          row[config.label] = d.net; 
+                      }
+                  });
+                  
+                  uniqueExamsMap.set(uniqueKey, row);
+              }
+          });
+      });
+      
+      return Array.from(uniqueExamsMap.values())
         .sort((a: any, b: any) => a.fullDate - b.fullDate);
   }, [allAnalyses]);
 
   // --- CRITICAL: PRECISE AVERAGE SCORE CALCULATION ---
   const averageScore = useMemo(() => {
     // 1. Filter exams that have a valid score > 0 (excludes parsing errors or empty placeholders)
+    // Now using the DEDUPLICATED globalTrendData
     const validExams = globalTrendData.filter(e => {
         const score = Number(e.totalScore);
         // Ensure strictly numbers, finite, and positive
