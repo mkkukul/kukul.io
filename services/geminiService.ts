@@ -126,12 +126,12 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
             },
             konu_analizi: {
                 type: Type.ARRAY,
-                description: "Sınav kağıdındaki konu analiz tablosunun BİREBİR KOPYASI. Tabloda kaç satır varsa o kadar obje oluştur. Konu isimlerini belgeden aynen al, asla kısaltma, değiştirme veya birleştirme yapma. OCR mantığıyla çalış.",
+                description: "Sınav kağıdındaki konu analiz tablosunun OCR ile okunmuş BİREBİR KOPYASI. Tabloda kaç satır varsa o kadar obje oluştur. Aynı konudan birden fazla satır varsa (Örn: 'Çarpanlar ve Katlar' 3 kez geçiyorsa) hepsini ayrı ayrı yaz, asla birleştirme. Konu isimlerini belgeden harfiyen al.",
                 items: {
                     type: Type.OBJECT,
                     properties: {
                         ders: { type: Type.STRING },
-                        konu: { type: Type.STRING, description: "Belgedeki satırda yazan konu/kazanım adı (Birebir aynı olmalı)" },
+                        konu: { type: Type.STRING, description: "Belgedeki satırda yazan konu/kazanım adı. Asla özetleme, tabloda ne yazıyorsa aynen kopyala." },
                         dogru: { type: Type.NUMBER },
                         yanlis: { type: Type.NUMBER },
                         bos: { type: Type.NUMBER },
