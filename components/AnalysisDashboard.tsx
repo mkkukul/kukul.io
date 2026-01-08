@@ -197,9 +197,9 @@ const FormattedText: React.FC<{ text: string, className?: string, textColor?: st
         // Empty lines
         if (!trimmed) return <div key={i} className="h-2"></div>;
         
-        // Regular paragraphs
+        // Regular paragraphs - Added mb-4 to ensure clear separation between lesson paragraphs
         return (
-            <p key={i} className={`leading-relaxed text-justify ${colorClass}`}>
+            <p key={i} className={`leading-relaxed text-justify mb-4 ${colorClass}`}>
                 <SafeHtmlText content={trimmed} />
             </p>
         );
@@ -857,7 +857,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className={`lg:col-span-2 text-white rounded-3xl p-8 relative overflow-hidden flex flex-col ${viewScope === 'all' ? 'bg-gradient-to-br from-indigo-900 to-slate-900' : 'bg-gradient-to-br from-brand-900 to-slate-900'}`}>
                     <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
-                    <h3 className="text-xl font-bold mb-6 flex items-center gap-3 relative z-10 border-b border-white/10 pb-4">
+                    <h3 className="text-xl font-bold mb-6 flex items-center gap-3 relative z-10 border-b border-white/10 pb-4 text-white">
                         <Search className="text-brand-400 w-6 h-6" />
                         {viewScope === 'all' ? 'Genel Performans Analizi' : 'Sınav Detay Analizi'}
                     </h3>
