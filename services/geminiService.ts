@@ -92,7 +92,7 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
             executive_summary: {
                 type: Type.OBJECT, 
                 properties: {
-                    mevcut_durum: { type: Type.STRING, description: "Markdown formatında analiz raporu. KURALLAR: 1. Sınavdaki HER BİR DERS (Türkçe, Matematik, Fen, İnkılap, Din, İngilizce) için AYRI BİR PARAGRAF oluştur. 2. Ders isimlerini metin içinde geçerken şu HTML ile sarmala: <span class='text-blue-300 font-bold'>Matematik</span>, <span class='text-red-300 font-bold'>Türkçe</span>, <span class='text-emerald-300 font-bold'>Fen Bilimleri</span>, <span class='text-amber-300 font-bold'>T.C. İnkılap Tarihi</span>, <span class='text-pink-300 font-bold'>İngilizce</span>, <span class='text-purple-300 font-bold'>Din Kültürü</span>. 3. SANDVİÇ TEKNİĞİ: Önce başarıyı öv, sonra gelişimi belirt, en son motive et." },
+                    mevcut_durum: { type: Type.STRING, description: "HTML etiketli, her dersin (Mat, Fen, Tr, İnk, İng, Din) ayrı paragrafta değerlendirildiği detaylı analiz metni. KURALLAR: 1. Ders isimlerini MUTLAKA şu HTML ile sarmala: <span class='text-blue-300 font-bold'>Matematik</span>, vb. (Prompttaki renkleri kullan). 2. Sandviç Tekniği kullan (Öv -> Eleştir -> Motive et)." },
                     guclu_yonler: { type: Type.ARRAY, items: { type: Type.STRING } },
                     zayif_yonler: { type: Type.ARRAY, items: { type: Type.STRING } },
                     lgs_tahmini_yuzdelik: { type: Type.NUMBER }
@@ -126,12 +126,12 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
             },
             konu_analizi: {
                 type: Type.ARRAY,
-                description: "Sınav kağıdındaki konu analiz tablosunun OCR ile okunmuş BİREBİR KOPYASI. Tabloda kaç satır varsa o kadar obje oluştur. Aynı konudan birden fazla satır varsa (Örn: 'Çarpanlar ve Katlar' 3 kez geçiyorsa) hepsini ayrı ayrı yaz, asla birleştirme. Konu isimlerini belgeden harfiyen al.",
+                description: "OCR ile taranmış EKSİKSİZ konu listesi. Belgede kaç satır varsa o kadar obje olmalı. Asla özetleme.",
                 items: {
                     type: Type.OBJECT,
                     properties: {
                         ders: { type: Type.STRING },
-                        konu: { type: Type.STRING, description: "Belgedeki satırda yazan konu/kazanım adı. Asla özetleme, tabloda ne yazıyorsa aynen kopyala." },
+                        konu: { type: Type.STRING, description: "Belgedeki satırda yazan tam konu adı." },
                         dogru: { type: Type.NUMBER },
                         yanlis: { type: Type.NUMBER },
                         bos: { type: Type.NUMBER },
@@ -144,14 +144,14 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
             },
             calisma_plani: {
                 type: Type.ARRAY,
-                description: "Öğrencinin girdiği sınavdaki HER BİR DERS için ayrı ayrı oluşturulmuş stratejik tavsiye listesi.",
+                description: "Her ders için somut aksiyon planı.",
                 items: {
                     type: Type.OBJECT,
                     properties: {
                         konu: { type: Type.STRING },
                         ders: { type: Type.STRING },
                         sebep: { type: Type.STRING },
-                        tavsiye: { type: Type.STRING, description: "3-4 maddelik; her maddede kaynak, süre ve uygulanacak tekniği içeren somut eylem planı." },
+                        tavsiye: { type: Type.STRING },
                         oncelik: { type: Type.NUMBER }
                     },
                     required: ["konu", "tavsiye", "oncelik", "sebep"]
@@ -159,20 +159,19 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
             },
             simulasyon: {
                 type: Type.OBJECT,
-                description: "Matematiksel hesaplamaya dayalı gelecek projeksiyonu.",
+                description: "6 Adımlık (Mat, Tr, Fen, İnk, İng, Din) gelişim simülasyonu.",
                 properties: {
-                    senaryo: { type: Type.STRING, description: "Genel özet metni." },
+                    senaryo: { type: Type.STRING },
                     hedef_yuzdelik: { type: Type.NUMBER },
-                    hedef_puan: { type: Type.NUMBER, description: "Simülasyon gerçekleşirse oluşacak tahmini LGS puanı (Örn: 425.5)" },
-                    puan_araligi: { type: Type.STRING, description: "Puanın olası aralığı (Örn: '420 - 430')" },
+                    hedef_puan: { type: Type.NUMBER },
+                    puan_araligi: { type: Type.STRING },
                     gerekli_net_artisi: { type: Type.STRING },
                     gelisim_adimlari: {
                         type: Type.ARRAY,
-                        description: "KESİNLİKLE SIRASIYLA (Matematik -> Türkçe -> Fen -> İnkılap -> İngilizce -> Din) şeklinde 6 maddelik gelişim planı.",
                         items: {
                             type: Type.OBJECT,
                             properties: {
-                                baslik: { type: Type.STRING, description: "Örn: Matematik - İşlem Hızı" },
+                                baslik: { type: Type.STRING },
                                 ne_yapmali: { type: Type.STRING },
                                 nasil_yapmali: { type: Type.STRING },
                                 sure: { type: Type.STRING },
