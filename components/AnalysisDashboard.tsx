@@ -823,7 +823,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
       {/* Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-2 mb-6 no-scrollbar" data-html2canvas-ignore>
         {[
-          { id: 'ozet', label: 'Dedektif Raporu', icon: Search },
+          { id: 'ozet', label: 'Stratejik Performans', icon: Search },
           { id: 'koc', label: 'Kukul AI Koç', icon: MessageCircle },
           { id: 'plan', label: 'Ders Bazlı Akıllı Strateji', icon: ListTodo },
           { id: 'konu', label: 'Konu Analizi', icon: BrainCircuit },
@@ -902,8 +902,25 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
             )}
 
             <div className="space-y-6">
-                 {/* --- DEDEKTİF RAPORU (VIDEO STYLE ANIMATED CARDS) --- */}
-                    <div className="relative z-10 mt-6">
+                 
+                 {/* --- STRATEJİK PERFORMANS ANALİZİ (YENİ KAPSAYICI) --- */}
+                 <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="p-3 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl">
+                            <Search className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">
+                                STRATEJİK PERFORMANS ANALİZİ
+                            </h3>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+                                Yapay zeka destekli detaylı durum tespiti ve gelişim önerileri
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* --- KARTLAR (GRID LAYOUT) --- */}
+                    <div className="relative z-10 mt-4">
                         {(() => {
                             // Prompt'tan gelen HTML etiketlerini parçalayan Fonksiyon
                             const parseLessonCards = (text: string) => {
@@ -935,7 +952,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                             const reportCards = parseLessonCards(activeData.executive_summary?.mevcut_durum || "");
 
                             return (
-                                <div className="flex overflow-x-auto pb-12 gap-8 snap-x scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 pt-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
                                     {reportCards.map((card, idx) => {
                                         const isIntro = card.type === 'intro';
                                         const config = getLessonConfig(card.lesson || "Genel");
@@ -949,12 +966,11 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                                 key={idx} 
                                                 className={`
                                                     relative group
-                                                    min-w-[320px] md:min-w-[400px] snap-center flex-shrink-0
                                                     rounded-[2.5rem] p-8 
                                                     transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]
-                                                    border border-white/50 dark:border-white/10
-                                                    overflow-hidden
-                                                    ${isIntro ? 'text-white' : 'bg-white/70 dark:bg-slate-800/60 backdrop-blur-2xl'}
+                                                    border border-slate-100 dark:border-slate-700
+                                                    overflow-hidden hover:z-10 hover:shadow-2xl hover:-translate-y-2
+                                                    ${isIntro ? 'col-span-1 md:col-span-2 lg:col-span-3 text-white' : 'bg-slate-50/50 dark:bg-slate-800/50 backdrop-blur-sm'}
                                                 `}
                                                 style={{ 
                                                     // Giriş kartı mor gradient, diğerleri cam efekti
@@ -962,7 +978,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                                         ? 'linear-gradient(135deg, #4f46e5 0%, #9333ea 100%)' 
                                                         : undefined,
                                                     // Hover yapınca kart yukarı kalkar ve gölgesi büyür
-                                                    boxShadow: `0 10px 30px -10px ${isIntro ? '#4f46e5' : baseColor}30`,
+                                                    boxShadow: isIntro ? '0 10px 30px -10px #4f46e550' : `0 10px 30px -10px ${baseColor}15`,
                                                     animation: `fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${idx * 0.1}s backwards`
                                                 }}
                                             >
@@ -978,7 +994,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                                 <div className="relative z-10 flex items-center gap-5 mb-6">
                                                     <div 
                                                         className={`
-                                                            w-16 h-16 rounded-[1.2rem] flex items-center justify-center shadow-xl
+                                                            w-16 h-16 rounded-[1.2rem] flex items-center justify-center shadow-lg
                                                             transform group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500
                                                         `}
                                                         style={{ 
@@ -997,10 +1013,10 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                                             {card.lesson}
                                                         </h3>
                                                         {!isIntro && (
-                                                            <div className="flex items-center gap-2 mt-1.5">
+                                                            <div className="flex items-center gap-2 mt-1.5 opacity-60">
                                                                 <span className="w-2 h-2 rounded-full animate-pulse" style={{backgroundColor: baseColor}}></span>
-                                                                <span className="text-xs font-bold uppercase tracking-wider opacity-60 text-slate-600 dark:text-slate-300">
-                                                                    Performans Raporu
+                                                                <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                                                                    Performans
                                                                 </span>
                                                             </div>
                                                         )}
@@ -1008,7 +1024,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                                 </div>
 
                                                 {/* İÇERİK (MADDELER) */}
-                                                <div className="relative z-10 text-[15px] font-medium leading-relaxed custom-scrollbar max-h-[300px] overflow-y-auto pr-2">
+                                                <div className="relative z-10 text-[15px] font-medium leading-relaxed custom-scrollbar max-h-[400px] overflow-y-auto pr-2">
                                                     <div className={`whitespace-pre-line space-y-4 ${isIntro ? 'text-white/90' : 'text-slate-600 dark:text-slate-300'}`}>
                                                         <FormattedText 
                                                             text={card.content} 
@@ -1029,6 +1045,8 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                             );
                         })()}
                     </div>
+                 </div>
+                 
                     {/* GELECEK SİMÜLASYONU (HOVER GLOW GRID) */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
                         {activeData.simulasyon?.gelisim_adimlari?.map((step, idx) => {
@@ -1178,11 +1196,11 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                              </h4>
                              <div className="space-y-3">
                                  {[
-                                     "Matematik netlerimi nasıl artırabilirim?",
-                                     "Hangi konularda eksiğim var?",
-                                     "Benim için günlük bir çalışma planı yapar mısın?",
-                                     "Motivasyonum düştü, bana bir şeyler söyle!",
-                                     "LGS'de hedeflediğim liseye girmek için ne yapmalıyım?"
+                                     "📝 Detaylı karne raporumu yaz",
+                                     "🎯 Matematiği nasıl düzeltirim?",
+                                     "📅 Bana günlük plan yap",
+                                     "🚀 Motivasyonum düştü",
+                                     "🏫 LGS hedefime nasıl ulaşırım?"
                                  ].map((suggestion, idx) => (
                                      <button 
                                          key={idx}
