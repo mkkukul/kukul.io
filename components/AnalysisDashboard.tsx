@@ -12,7 +12,7 @@ import {
   Lightbulb, ClipboardCheck, Stethoscope, Pill, Timer, BookMarked,
   ArrowUpDown, ArrowUp, ArrowDown, Calendar, History, Filter, Layers,
   LayoutGrid, Activity, Users, Star, Footprints, Clock, Rocket,
-  CheckCircle, AlertCircle, HelpCircle, Trophy, ThumbsUp
+  CheckCircle, AlertCircle, HelpCircle, Trophy, ThumbsUp, Flame, Siren
 } from 'lucide-react';
 
 interface Props {
@@ -149,6 +149,7 @@ const FormattedText: React.FC<{ text: string, className?: string, textColor?: st
   if (!text) return null;
 
   // Use passed textColor or default to slate-700/300 if not provided
+  // When textColor="text-white" is passed, it forces white text even for regular paragraphs
   const colorClass = textColor || "text-slate-700 dark:text-slate-300";
 
   return (
@@ -463,6 +464,14 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
        return config.label === selectedConfig.label;
     });
   }
+
+  // --- NEW: Identify Top 5 Critical Weaknesses (More than 1 wrong answer) ---
+  const criticalWeaknesses = useMemo(() => {
+    return (activeData.konu_analizi || [])
+        .filter(t => (t.yanlis || 0) > 1) // Must have at least 2 wrong answers to be critical
+        .sort((a, b) => (b.yanlis || 0) - (a.yanlis || 0)) // Sort descending by wrong count
+        .slice(0, 5); // Take top 5
+  }, [activeData]);
 
   // Calculate Summary Stats for Topic Tab - NEW 4-TIER LOGIC
   const topicStats = useMemo(() => {
@@ -792,139 +801,193 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
         
         {/* TAB 1: EXECUTIVE SUMMARY */}
         {activeTab === 'ozet' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up">
-            <div className={`lg:col-span-2 text-white rounded-3xl p-8 relative overflow-hidden flex flex-col ${viewScope === 'all' ? 'bg-gradient-to-br from-indigo-900 to-slate-900' : 'bg-gradient-to-br from-brand-900 to-slate-900'}`}>
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
-                <h3 className="text-xl font-bold mb-6 flex items-center gap-3 relative z-10 border-b border-white/10 pb-4">
-                    <Search className="text-brand-400 w-6 h-6" />
-                    {viewScope === 'all' ? 'Genel Performans Analizi' : 'Sınav Detay Analizi'}
-                </h3>
-                <div className="relative z-10 text-slate-200">
-                    <FormattedText text={activeData.executive_summary?.mevcut_durum || "Veri bulunamadı."} className="text-slate-200" textColor="text-slate-100" />
-                </div>
-            </div>
-
-            <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col">
-                <div className="mb-6">
-                    <div className="bg-amber-100 dark:bg-amber-900/30 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
-                        <Target className="w-6 h-6 text-amber-600 dark:text-amber-500" />
-                    </div>
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">Gelecek Simülasyonu</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide font-bold">BU ADIMLARI UYGULARSAN</p>
-                </div>
-                
-                {/* NEW: Potential Bars Section */}
-                <div className="mb-6 bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700 rounded-xl p-4">
-                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2 uppercase tracking-wide">
-                        <BarChart2 className="w-3 h-3" />
-                        Ders Bazlı Gelişim Kapasitesi
-                    </h4>
-                    <div className="space-y-3">
-                        {potentials.map((p, idx) => ( // Show all opportunities in fixed order
-                            <div key={idx}>
-                                <div className="flex justify-between text-xs mb-1">
-                                    <span className="font-semibold text-slate-600 dark:text-slate-300">{p.label}</span>
-                                    <span className="text-slate-500 dark:text-slate-400">
-                                        <span className="font-medium text-slate-800 dark:text-slate-200">{p.current.toFixed(1)}</span> / <span className="font-bold">{p.limit} Net</span>
-                                    </span>
-                                </div>
-                                <div className="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-1.5 overflow-hidden flex">
-                                     {/* Current Net */}
-                                     <div className="h-full transition-all duration-500" style={{ width: `${p.percentage}%`, backgroundColor: p.color }}></div>
-                                     {/* Potential (Gap) - Transparent color */}
-                                     <div className="h-full relative transition-all duration-500" style={{ width: `${(p.gap / p.limit) * 100}%`, backgroundColor: `${p.color}33` }}> 
-                                     </div>
-                                </div>
-                                <div className="text-[10px] text-right text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">
-                                    +{p.gap.toFixed(1)} net kazanılabilir
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Score Comparison Section */}
-                <div className="mb-6 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-xl p-4 space-y-4">
-                    
-                    {/* Percentile Comparison */}
-                    <div className="flex justify-between items-center border-b border-amber-200/50 dark:border-amber-800/50 pb-2">
-                         <div className="text-center">
-                            <div className="text-[10px] text-amber-800 dark:text-amber-500 font-bold uppercase">Şu An</div>
-                            <div className="text-lg font-bold text-amber-900/60 dark:text-amber-600/60 line-through decoration-amber-500/50">
-                                %{activeData.executive_summary?.lgs_tahmini_yuzdelik ? activeData.executive_summary.lgs_tahmini_yuzdelik.toFixed(2) : '-'}
-                            </div>
-                         </div>
-                         <ArrowRight className="w-5 h-5 text-amber-500" />
-                         <div className="text-center">
-                             <div className="text-[10px] text-amber-800 dark:text-amber-500 font-bold uppercase">Hedef</div>
-                             <div className="text-2xl font-black text-amber-600 dark:text-amber-500">
-                                %{activeData.simulasyon?.hedef_yuzdelik || 0}
-                             </div>
-                         </div>
-                    </div>
-
-                    {/* Score Comparison */}
-                    <div className="flex justify-between items-center">
-                         <div className="text-center">
-                            <div className="text-[10px] text-amber-800 dark:text-amber-500 font-bold uppercase">Mevcut Puan</div>
-                            <div className="text-lg font-bold text-amber-900/60 dark:text-amber-600/60 line-through decoration-amber-500/50">
-                                {currentScoreDisplay}
-                            </div>
-                         </div>
-                         <ArrowRight className="w-5 h-5 text-amber-500" />
-                         <div className="text-center">
-                             <div className="text-[10px] text-amber-800 dark:text-amber-500 font-bold uppercase">Maksimum Potansiyel</div>
-                             <div className="text-xl font-black text-amber-600 dark:text-amber-500">
-                                {recoverableInfo.max.toFixed(1)}
-                             </div>
-                             <div className="text-[9px] text-amber-600 dark:text-amber-400 font-bold bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full mt-1">
-                                 +{recoverableInfo.loss.toFixed(1)} Kayıp Puan
-                             </div>
-                         </div>
-                    </div>
-                </div>
-
-                {/* Structured Steps Section */}
-                <div className="flex-grow flex flex-col gap-3 overflow-y-auto max-h-[400px] pr-2">
-                    {activeData.simulasyon?.gelisim_adimlari?.map((step, idx) => {
-                        const stepConfig = getSimulationStepConfig(step.baslik);
-                        return (
-                        <div key={idx} className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3 border border-slate-100 dark:border-slate-700 text-sm hover:border-amber-200 dark:hover:border-amber-800 transition-colors">
-                             <div className="font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center gap-2">
-                                 {/* Icon based on lesson */}
-                                 <div className="w-5 h-5 rounded-full flex items-center justify-center text-xs shrink-0 text-white" style={{ backgroundColor: stepConfig.color }}>
-                                    <stepConfig.icon className="w-3 h-3" />
-                                 </div>
-                                 {step.baslik}
-                             </div>
-                             
-                             <div className="space-y-2 mt-2 pl-7">
-                                 <div className="flex gap-2 items-start">
-                                     <Rocket className="w-3 h-3 text-brand-500 shrink-0 mt-1" />
-                                     <p className="text-slate-600 dark:text-slate-300 leading-tight">
-                                         <span className="font-semibold text-slate-700 dark:text-slate-200">Ne Yapmalı:</span> {step.ne_yapmali}
-                                     </p>
-                                 </div>
-                                 <div className="flex gap-2 items-start">
-                                     <Footprints className="w-3 h-3 text-amber-500 shrink-0 mt-1" />
-                                     <p className="text-slate-600 dark:text-slate-300 leading-tight">
-                                         <span className="font-semibold text-slate-700 dark:text-slate-200">Yöntem:</span> {step.nasil_yapmali}
-                                     </p>
-                                 </div>
-                                 <div className="flex gap-2 items-center bg-white dark:bg-slate-800 p-1.5 rounded border border-slate-100 dark:border-slate-600">
-                                     <Clock className="w-3 h-3 text-emerald-500 shrink-0" />
-                                     <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{step.sure}</span>
-                                     <span className="text-slate-300 mx-1">|</span>
-                                     <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">{step.ongoru}</span>
-                                 </div>
-                             </div>
+          <div className="animate-fade-in-up">
+            
+            {/* NEW: CRITICAL WEAKNESSES ALERT SECTION */}
+            {criticalWeaknesses.length > 0 && (
+                <div className="mb-6 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 rounded-3xl p-5 shadow-sm">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="bg-red-100 dark:bg-red-900/40 p-2 rounded-xl text-red-600 dark:text-red-400 animate-pulse">
+                            <Siren className="w-6 h-6" />
                         </div>
-                    )})}
-                    {!activeData.simulasyon?.gelisim_adimlari && (
-                        <p className="text-slate-500 dark:text-slate-400 italic text-sm p-2 text-center">
-                            {activeData.simulasyon?.senaryo}
-                        </p>
-                    )}
+                        <div>
+                            <h3 className="text-lg font-black text-red-900 dark:text-red-200">
+                                ACİL MÜDAHALE LİSTESİ (TOP {criticalWeaknesses.length})
+                            </h3>
+                            <p className="text-sm text-red-700 dark:text-red-300/80">
+                                Bu konularda ciddi kayıplar var (1'den fazla yanlış). Çözüm önerisi için karta tıkla.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                        {criticalWeaknesses.map((topic, idx) => {
+                            const conf = getLessonConfig(topic.ders);
+                            return (
+                                <div 
+                                    key={idx}
+                                    onClick={() => setActiveTab('plan')}
+                                    className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-red-100 dark:border-red-900/30 hover:border-red-300 dark:hover:border-red-600 hover:shadow-md cursor-pointer transition-all group flex flex-col justify-between"
+                                >
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: conf.color }}></div>
+                                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">{conf.label}</span>
+                                        </div>
+                                        <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 leading-tight mb-3 line-clamp-2">
+                                            {topic.konu}
+                                        </h4>
+                                    </div>
+                                    <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-700 pt-3 mt-1">
+                                        <div className="flex items-center gap-1.5 text-red-600 dark:text-red-400 font-black text-lg">
+                                            <AlertCircle className="w-4 h-4" />
+                                            {topic.yanlis} Y
+                                        </div>
+                                        <div className="text-xs text-brand-600 dark:text-brand-400 font-medium group-hover:underline flex items-center gap-0.5">
+                                            Çözüm <ArrowRight className="w-3 h-3" />
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className={`lg:col-span-2 text-white rounded-3xl p-8 relative overflow-hidden flex flex-col ${viewScope === 'all' ? 'bg-gradient-to-br from-indigo-900 to-slate-900' : 'bg-gradient-to-br from-brand-900 to-slate-900'}`}>
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                    <h3 className="text-xl font-bold mb-6 flex items-center gap-3 relative z-10 border-b border-white/10 pb-4">
+                        <Search className="text-brand-400 w-6 h-6" />
+                        {viewScope === 'all' ? 'Genel Performans Analizi' : 'Sınav Detay Analizi'}
+                    </h3>
+                    <div className="relative z-10 text-white">
+                        <FormattedText text={activeData.executive_summary?.mevcut_durum || "Veri bulunamadı."} className="text-white" textColor="text-white" />
+                    </div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col">
+                    <div className="mb-6">
+                        <div className="bg-amber-100 dark:bg-amber-900/30 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
+                            <Target className="w-6 h-6 text-amber-600 dark:text-amber-500" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">Gelecek Simülasyonu</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide font-bold">BU ADIMLARI UYGULARSAN</p>
+                    </div>
+                    
+                    {/* NEW: Potential Bars Section */}
+                    <div className="mb-6 bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700 rounded-xl p-4">
+                        <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2 uppercase tracking-wide">
+                            <BarChart2 className="w-3 h-3" />
+                            Ders Bazlı Gelişim Kapasitesi
+                        </h4>
+                        <div className="space-y-3">
+                            {potentials.map((p, idx) => ( // Show all opportunities in fixed order
+                                <div key={idx}>
+                                    <div className="flex justify-between text-xs mb-1">
+                                        <span className="font-semibold text-slate-600 dark:text-slate-300">{p.label}</span>
+                                        <span className="text-slate-500 dark:text-slate-400">
+                                            <span className="font-medium text-slate-800 dark:text-slate-200">{p.current.toFixed(1)}</span> / <span className="font-bold">{p.limit} Net</span>
+                                        </span>
+                                    </div>
+                                    <div className="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-1.5 overflow-hidden flex">
+                                        {/* Current Net */}
+                                        <div className="h-full transition-all duration-500" style={{ width: `${p.percentage}%`, backgroundColor: p.color }}></div>
+                                        {/* Potential (Gap) - Transparent color */}
+                                        <div className="h-full relative transition-all duration-500" style={{ width: `${(p.gap / p.limit) * 100}%`, backgroundColor: `${p.color}33` }}> 
+                                        </div>
+                                    </div>
+                                    <div className="text-[10px] text-right text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">
+                                        +{p.gap.toFixed(1)} net kazanılabilir
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Score Comparison Section */}
+                    <div className="mb-6 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-xl p-4 space-y-4">
+                        
+                        {/* Percentile Comparison */}
+                        <div className="flex justify-between items-center border-b border-amber-200/50 dark:border-amber-800/50 pb-2">
+                            <div className="text-center">
+                                <div className="text-[10px] text-amber-800 dark:text-amber-500 font-bold uppercase">Şu An</div>
+                                <div className="text-lg font-bold text-amber-900/60 dark:text-amber-600/60 line-through decoration-amber-500/50">
+                                    %{activeData.executive_summary?.lgs_tahmini_yuzdelik ? activeData.executive_summary.lgs_tahmini_yuzdelik.toFixed(2) : '-'}
+                                </div>
+                            </div>
+                            <ArrowRight className="w-5 h-5 text-amber-500" />
+                            <div className="text-center">
+                                <div className="text-[10px] text-amber-800 dark:text-amber-500 font-bold uppercase">Hedef</div>
+                                <div className="text-2xl font-black text-amber-600 dark:text-amber-500">
+                                    %{activeData.simulasyon?.hedef_yuzdelik || 0}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Score Comparison */}
+                        <div className="flex justify-between items-center">
+                            <div className="text-center">
+                                <div className="text-[10px] text-amber-800 dark:text-amber-500 font-bold uppercase">Mevcut Puan</div>
+                                <div className="text-lg font-bold text-amber-900/60 dark:text-amber-600/60 line-through decoration-amber-500/50">
+                                    {currentScoreDisplay}
+                                </div>
+                            </div>
+                            <ArrowRight className="w-5 h-5 text-amber-500" />
+                            <div className="text-center">
+                                <div className="text-[10px] text-amber-800 dark:text-amber-500 font-bold uppercase">Maksimum Potansiyel</div>
+                                <div className="text-xl font-black text-amber-600 dark:text-amber-500">
+                                    {recoverableInfo.max.toFixed(1)}
+                                </div>
+                                <div className="text-[9px] text-amber-600 dark:text-amber-400 font-bold bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full mt-1">
+                                    +{recoverableInfo.loss.toFixed(1)} Kayıp Puan
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Structured Steps Section */}
+                    <div className="flex-grow flex flex-col gap-3 overflow-y-auto max-h-[400px] pr-2">
+                        {activeData.simulasyon?.gelisim_adimlari?.map((step, idx) => {
+                            const stepConfig = getSimulationStepConfig(step.baslik);
+                            return (
+                            <div key={idx} className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3 border border-slate-100 dark:border-slate-700 text-sm hover:border-amber-200 dark:hover:border-amber-800 transition-colors">
+                                <div className="font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center gap-2">
+                                    {/* Icon based on lesson */}
+                                    <div className="w-5 h-5 rounded-full flex items-center justify-center text-xs shrink-0 text-white" style={{ backgroundColor: stepConfig.color }}>
+                                        <stepConfig.icon className="w-3 h-3" />
+                                    </div>
+                                    {step.baslik}
+                                </div>
+                                
+                                <div className="space-y-2 mt-2 pl-7">
+                                    <div className="flex gap-2 items-start">
+                                        <Rocket className="w-3 h-3 text-brand-500 shrink-0 mt-1" />
+                                        <p className="text-slate-600 dark:text-slate-300 leading-tight">
+                                            <span className="font-semibold text-slate-700 dark:text-slate-200">Ne Yapmalı:</span> {step.ne_yapmali}
+                                        </p>
+                                    </div>
+                                    <div className="flex gap-2 items-start">
+                                        <Footprints className="w-3 h-3 text-amber-500 shrink-0 mt-1" />
+                                        <p className="text-slate-600 dark:text-slate-300 leading-tight">
+                                            <span className="font-semibold text-slate-700 dark:text-slate-200">Yöntem:</span> {step.nasil_yapmali}
+                                        </p>
+                                    </div>
+                                    <div className="flex gap-2 items-center bg-white dark:bg-slate-800 p-1.5 rounded border border-slate-100 dark:border-slate-600">
+                                        <Clock className="w-3 h-3 text-emerald-500 shrink-0" />
+                                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{step.sure}</span>
+                                        <span className="text-slate-300 mx-1">|</span>
+                                        <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">{step.ongoru}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )})}
+                        {!activeData.simulasyon?.gelisim_adimlari && (
+                            <p className="text-slate-500 dark:text-slate-400 italic text-sm p-2 text-center">
+                                {activeData.simulasyon?.senaryo}
+                            </p>
+                        )}
+                    </div>
                 </div>
             </div>
           </div>
