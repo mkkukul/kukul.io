@@ -450,8 +450,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
 
   // --- CRITICAL: PRECISE AVERAGE SCORE CALCULATION ---
   const averageScore = useMemo(() => {
-    // 1. Filter exams that have a valid score > 0 (excludes parsing errors or empty placeholders)
-    // Now using the DEDUPLICATED globalTrendData
+    // 1. Filter exams with valid scores
     const validExams = globalTrendData.filter(e => {
         const score = Number(e.totalScore);
         // Ensure strictly numbers, finite, and positive
@@ -584,8 +583,6 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
   });
 
   // ROBUST LAST EXAM SELECTION
-  // Find the last exam that actually has a score > 0.
-  // This prevents displaying "0" if the AI parsed a blank row at the end of a table.
   const lastExam = useMemo(() => {
     if (!activeData.exams_history || activeData.exams_history.length === 0) return null;
     
@@ -1349,6 +1346,9 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                              <div className="flex items-center gap-1">Ders <RenderSortIcon columnKey="ders"/></div>
                                          </th>
                                          <th className="px-6 py-4 text-center">Soru Dağılımı</th>
+                                         <th onClick={() => handleSort('net_kaybi')} className="px-6 py-4 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 group">
+                                             <div className="flex items-center gap-1 justify-center">Net Kaybı <RenderSortIcon columnKey="net_kaybi"/></div>
+                                         </th>
                                          <th onClick={() => handleSort('basari_yuzdesi')} className="px-6 py-4 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 group">
                                              <div className="flex items-center gap-1 justify-center">Başarı <RenderSortIcon columnKey="basari_yuzdesi"/></div>
                                          </th>
@@ -1359,7 +1359,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                  </thead>
                                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                                      {chartData.length === 0 ? (
-                                         <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500">Bu filtrede konu bulunamadı.</td></tr>
+                                         <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-500">Bu filtrede konu bulunamadı.</td></tr>
                                      ) : (
                                          chartData.map((topic, i) => (
                                              <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
@@ -1386,6 +1386,14 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                                              <span className="text-[9px] text-slate-400">B</span>
                                                          </div>
                                                      </div>
+                                                 </td>
+                                                 <td className="px-6 py-4 text-center">
+                                                    <div className="flex flex-col items-center">
+                                                        <span className="text-amber-600 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded text-xs">
+                                                            -{((topic.yanlis || 0) / 3).toFixed(2)}
+                                                        </span>
+                                                        <span className="text-[9px] text-slate-400 mt-0.5">Net</span>
+                                                    </div>
                                                  </td>
                                                  <td className="px-6 py-4 text-center">
                                                      <div className="relative w-12 h-12 mx-auto">

@@ -12,8 +12,8 @@ export const AppConfig = {
     modelName: 'gemini-3-flash-preview',
     generationConfig: {
       temperature: 0.0,
-      maxOutputTokens: 32768,
-      thinkingBudget: 10240,
+      maxOutputTokens: 65536, // Artırıldı: Büyük analizler için geniş alan
+      thinkingBudget: 0,      // HIZ OPTİMİZASYONU: Düşünme bütçesi 0 yapıldı (devre dışı). Flash modeli yeterince hızlı ve akıllı.
     }
   }
 };

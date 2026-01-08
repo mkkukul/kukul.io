@@ -162,15 +162,22 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
             },
             simulasyon: {
                 type: Type.OBJECT,
-                description: "6 Adımlık (Mat, Tr, Fen, İnk, İng, Din) gelişim simülasyonu.",
+                description: "Konu analizi (zayıf konular) ve çalışma planındaki öneriler baz alınarak oluşturulan, öğrencinin potansiyel gelişim simülasyonu.",
                 properties: {
-                    senaryo: { type: Type.STRING },
+                    senaryo: { type: Type.STRING, description: "Öğrencinin mevcut durumundan hareketle, çalışma planına uyarsa nasıl bir başarı elde edeceğini anlatan motive edici senaryo." },
                     hedef_yuzdelik: { type: Type.NUMBER },
-                    hedef_puan: { type: Type.NUMBER },
+                    hedef_puan: { 
+                        type: Type.NUMBER, 
+                        description: "HESAPLAMA: (Mevcut Puan) + (Konu Analizindeki Toplam 'lgs_kayip_puan' * 0.60). Bu formülü uygulayarak gerçekçi ve ulaşılabilir bir hedef puan belirle." 
+                    },
                     puan_araligi: { type: Type.STRING },
-                    gerekli_net_artisi: { type: Type.STRING },
+                    gerekli_net_artisi: { 
+                        type: Type.STRING, 
+                        description: "STRATEJİ: Konu analizinde en çok yanlış/boş yapılan dersleri belirle. Hedef puana ulaşmak için bu derslerden toplam kaç net arttırması gerektiğini yaz. Örn: 'Matematik: +4 Net (Üslü Sayılar), Fen: +3 Net'." 
+                    },
                     gelisim_adimlari: {
                         type: Type.ARRAY,
+                        description: "Çalışma planındaki öncelikli konularla uyumlu, somut gelişim adımları.",
                         items: {
                             type: Type.OBJECT,
                             properties: {

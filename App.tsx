@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import FileUpload from './components/FileUpload';
 import AnalysisDashboard from './components/AnalysisDashboard';
@@ -75,10 +74,10 @@ const App: React.FC = () => {
           let width = img.width;
           let height = img.height;
           
-          // OPTIMIZATION: 2560px is the sweet spot for OCR.
-          // Standard A4 @ 300DPI is ~2480px width.
-          // 3072px was overkill and slowed down processing/upload.
-          const MAX_DIMENSION = 2560;
+          // OPTIMIZATION for SPEED: 
+          // 1280px is a good balance for speed vs OCR accuracy. 
+          // Previous settings were safer but slower. 1280px drastically reduces tokens/bandwidth.
+          const MAX_DIMENSION = 1280;
 
           if (width > height) {
             if (width > MAX_DIMENSION) {
@@ -97,9 +96,9 @@ const App: React.FC = () => {
           const ctx = canvas.getContext('2d');
           
           if (ctx) {
-             // High quality smoothing for text clarity
+             // Medium quality smoothing is faster than high and sufficient for OCR
              ctx.imageSmoothingEnabled = true;
-             ctx.imageSmoothingQuality = 'high';
+             ctx.imageSmoothingQuality = 'medium';
              
              // CRITICAL: Fill white background. 
              // Transparent PNGs often turn black in OCR engines/Base64, causing data loss.
@@ -109,9 +108,9 @@ const App: React.FC = () => {
              ctx.drawImage(img, 0, 0, width, height);
           }
           
-          // OPTIMIZATION: 0.85 quality is virtually indistinguishable for text
-          // but reduces file size by ~40% compared to 0.90+.
-          resolve(canvas.toDataURL('image/jpeg', 0.85));
+          // OPTIMIZATION: 0.4 quality reduces file size further
+          // This improves upload and processing speed significantly.
+          resolve(canvas.toDataURL('image/jpeg', 0.4));
         };
         img.onerror = (err) => reject(err);
       };
@@ -212,7 +211,7 @@ const App: React.FC = () => {
                 <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight group-hover:text-brand-700 dark:group-hover:text-brand-400 transition-colors">
                     Kukul.io
                 </h1>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold tracking-widest uppercase">Eğitim ve Veri Analisti</p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold tracking-widest uppercase">Stratejik Performans Koçluğu</p>
               </div>
             </div>
 
@@ -287,7 +286,7 @@ const App: React.FC = () => {
         
         {/* Footer */}
         <footer className="py-6 text-center text-slate-400 dark:text-slate-600 text-sm">
-          <p>© {new Date().getFullYear()} Kukul.io. kukul.ai 0.62 tarafından desteklenmektedir.</p>
+          <p>Bu Uygulama Beta Test Aşamasındadır. © {new Date().getFullYear()} Kukul.io. kukul.ai 0.61 tarafından desteklenmektedir.</p>
         </footer>
 
       </div>
