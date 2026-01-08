@@ -1,4 +1,5 @@
 
+
 export interface StudentInfo {
   ad_soyad: string;
   sube: string;
@@ -68,6 +69,11 @@ export interface ComprehensiveAnalysis {
   konu_analizi: TopicAnalysis[]; // Aggregated or latest detailed topic analysis
   calisma_plani: ActionItem[];
   simulasyon: Simulation;
+}
+
+export interface ChatMessage {
+  role: 'user' | 'model';
+  text: string;
 }
 
 export enum AppState {

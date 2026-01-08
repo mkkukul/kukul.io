@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { ComprehensiveAnalysis, TopicAnalysis } from '../types';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { ComprehensiveAnalysis, TopicAnalysis, ChatMessage } from '../types';
+import { chatWithCoach } from '../services/geminiService';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
   BarChart, Bar, Cell, PieChart, Pie,
@@ -12,8 +13,11 @@ import {
   Lightbulb, ClipboardCheck, Stethoscope, Pill, Timer, BookMarked,
   ArrowUpDown, ArrowUp, ArrowDown, Calendar, History, Filter, Layers,
   LayoutGrid, Activity, Users, Star, Footprints, Clock, Rocket,
-  CheckCircle, AlertCircle, HelpCircle, Trophy, ThumbsUp, Flame, Siren
+  CheckCircle, AlertCircle, HelpCircle, Trophy, ThumbsUp, Flame, Siren, Quote,
+  Download, Loader2, MessageCircle, Send, Bot
 } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 interface Props {
   data: ComprehensiveAnalysis;
@@ -265,61 +269,8 @@ const aggregateAnalyses = (analyses: ComprehensiveAnalysis[]): ComprehensiveAnal
     };
 };
 
-// --- CUSTOM TOOLTIP COMPONENT ---
-const CustomTopicTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-        const data = payload[0].payload as TopicAnalysis;
-        
-        // Ensure status is up to date based on percentage
-        const derivedStatus = getStatusByPercentage(data.basari_yuzdesi);
-
-        return (
-            <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm p-4 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 text-sm max-w-[280px] z-50 animate-fade-in">
-                {/* Header */}
-                <div className="border-b border-slate-100 dark:border-slate-700 pb-2 mb-2 flex justify-between items-start">
-                    <div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{data.ders}</p>
-                        <h4 className="font-bold text-slate-800 dark:text-slate-100 text-base leading-tight mt-0.5">{data.konu}</h4>
-                    </div>
-                    {derivedStatus === 'Kritik' && <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />}
-                </div>
-
-                {/* Stats Grid */}
-                <div className="grid grid-cols-3 gap-2 mb-3">
-                    <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-2 text-center border border-emerald-100 dark:border-emerald-800">
-                        <div className="text-emerald-700 dark:text-emerald-400 font-black text-lg leading-none">{data.dogru}</div>
-                        <div className="text-[9px] text-emerald-600 dark:text-emerald-500 font-bold uppercase mt-1">Doğru</div>
-                    </div>
-                     <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-2 text-center border border-red-100 dark:border-red-800">
-                        <div className="text-red-600 dark:text-red-400 font-black text-lg leading-none">{data.yanlis}</div>
-                        <div className="text-[9px] text-red-500 font-bold uppercase mt-1">Yanlış</div>
-                    </div>
-                     <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-2 text-center border border-slate-100 dark:border-slate-600">
-                        <div className="text-slate-600 dark:text-slate-300 font-black text-lg leading-none">{data.bos}</div>
-                        <div className="text-[9px] text-slate-400 font-bold uppercase mt-1">Boş</div>
-                    </div>
-                </div>
-
-                {/* Comparison / Detail Section */}
-                <div className="space-y-2 bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3">
-                     <div className="flex justify-between items-center text-xs">
-                        <span className="text-slate-500 dark:text-slate-400 font-medium">LGS'ye Etkisi (Kayıp)</span>
-                        <span className="text-red-600 dark:text-red-400 font-black bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded shadow-sm">-{data.lgs_kayip_puan} Puan</span>
-                     </div>
-                     <div className="flex justify-between items-center text-xs">
-                        <span className="text-slate-500 dark:text-slate-400 font-medium">Başarı Yüzdesi</span>
-                        <span className={`font-bold ${data.basari_yuzdesi >= 70 ? 'text-emerald-600 dark:text-emerald-400' : data.basari_yuzdesi >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>%{data.basari_yuzdesi.toFixed(1)}</span>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-    return null;
-};
-
-
 const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHistory }) => {
-  const [activeTab, setActiveTab] = useState<'ozet' | 'trend' | 'plan' | 'konu'>('ozet');
+  const [activeTab, setActiveTab] = useState<'ozet' | 'trend' | 'plan' | 'konu' | 'koc'>('ozet');
   
   // Trend Specific States
   const [trendSubTab, setTrendSubTab] = useState<'all' | 'last3' | 'individual'>('all');
@@ -328,6 +279,16 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
   
   // VIEW SCOPE: 'all' (Aggregate) or specific analysis ID
   const [viewScope, setViewScope] = useState<string>('all');
+  
+  // PDF Download State
+  const [isDownloading, setIsDownloading] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Chat State
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Sorting State - Defaults to LGS Kayıp Puan Descending
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
@@ -356,6 +317,83 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
   useEffect(() => {
     setSortConfig({ key: 'lgs_kayip_puan', direction: 'desc' });
   }, [viewScope, activeTab]);
+
+  // Initialize Chat History
+  useEffect(() => {
+    if (activeData) {
+      const studentName = activeData.ogrenci_bilgi?.ad_soyad?.split(' ')[0] || "Öğrenci";
+      // Reset chat when scope/data changes
+      setChatHistory([{
+        role: 'model',
+        text: `Merhaba ${studentName}! 🚀 Analiz raporunu inceledim. Sonuçların hakkında konuşmak veya çalışma planı yapmak için buradayım. Nereden başlayalım?`
+      }]);
+    }
+  }, [activeData.id]);
+
+  // Scroll to bottom of chat
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatHistory]);
+
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!chatInput.trim() || isChatLoading) return;
+
+    const userMessage = chatInput.trim();
+    setChatInput("");
+    setChatHistory(prev => [...prev, { role: 'user', text: userMessage }]);
+    setIsChatLoading(true);
+
+    try {
+        const response = await chatWithCoach(userMessage, chatHistory, activeData);
+        setChatHistory(prev => [...prev, { role: 'model', text: response }]);
+    } catch (error) {
+        setChatHistory(prev => [...prev, { role: 'model', text: "Üzgünüm, şu an bağlantıda bir sorun yaşıyorum. Lütfen biraz sonra tekrar dene. 😔" }]);
+    } finally {
+        setIsChatLoading(false);
+    }
+  };
+
+  // --- PDF DOWNLOAD HANDLER ---
+  const downloadPDF = async () => {
+    if (!contentRef.current) return;
+    
+    setIsDownloading(true);
+    
+    try {
+        const element = contentRef.current;
+        
+        // Use html2canvas to capture the element
+        const canvas = await html2canvas(element, {
+            scale: 2, // High resolution
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff' // Force white background for PDF
+        });
+        
+        const imgData = canvas.toDataURL('image/png');
+        
+        // Calculate dimensions to fit in a PDF (Custom Height logic to avoid splitting charts)
+        // We use A4 width (210mm) as base, but height will be dynamic
+        const imgWidth = 210; 
+        const pageHeight = 295; 
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
+        // Determine PDF format: if content is long, make a long page, otherwise A4
+        const pdf = new jsPDF('p', 'mm', [imgWidth, Math.max(imgHeight, pageHeight)]);
+        
+        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+        
+        const fileName = `${activeData.ogrenci_bilgi?.ad_soyad || 'analiz'}_rapor.pdf`.replace(/\s+/g, '_');
+        pdf.save(fileName);
+        
+    } catch (error) {
+        console.error("PDF oluşturma hatası:", error);
+        alert("PDF oluşturulurken bir hata oluştu.");
+    } finally {
+        setIsDownloading(false);
+    }
+  };
 
   // --- DATA PREPARATION (Using activeData) ---
 
@@ -689,7 +727,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
   }, [activeData, averageScore, lastExam, viewScope]);
 
   return (
-    <div className="w-full max-w-7xl mx-auto pb-12 animate-fade-in">
+    <div ref={contentRef} className="w-full max-w-7xl mx-auto pb-12 animate-fade-in">
       
       {/* HEADER & SCOPE SELECTION */}
       <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 mb-8 flex flex-col gap-6">
@@ -763,10 +801,18 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                     {currentNetDisplay}
                 </p>
              </div>
-             <div className="ml-auto">
+             <div className="ml-auto flex items-center gap-2">
+                 <button 
+                    onClick={downloadPDF}
+                    disabled={isDownloading}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                    PDF İndir
+                  </button>
                  <button 
                     onClick={onReset}
-                    className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors shadow-sm"
+                    className="px-4 py-2 text-sm font-medium text-white bg-brand-600 dark:bg-brand-500 rounded-lg hover:bg-brand-700 dark:hover:bg-brand-600 transition-colors shadow-sm"
                   >
                     + Yeni Analiz Yükle
                   </button>
@@ -775,9 +821,10 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-6 no-scrollbar">
+      <div className="flex gap-2 overflow-x-auto pb-2 mb-6 no-scrollbar" data-html2canvas-ignore>
         {[
           { id: 'ozet', label: 'Dedektif Raporu', icon: Search },
+          { id: 'koc', label: 'Kukul AI Koç', icon: MessageCircle },
           { id: 'plan', label: 'Ders Bazlı Akıllı Strateji', icon: ListTodo },
           { id: 'konu', label: 'Konu Analizi', icon: BrainCircuit },
           { id: 'trend', label: 'İlerleme Geçmişi', icon: History },
@@ -854,758 +901,591 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                 </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className={`lg:col-span-2 text-white rounded-3xl p-8 relative overflow-hidden flex flex-col ${viewScope === 'all' ? 'bg-gradient-to-br from-indigo-900 to-slate-900' : 'bg-gradient-to-br from-brand-900 to-slate-900'}`}>
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
-                    <h3 className="text-xl font-bold mb-6 flex items-center gap-3 relative z-10 border-b border-white/10 pb-4 text-white">
-                        <Search className="text-brand-400 w-6 h-6" />
-                        {viewScope === 'all' ? 'Genel Performans Analizi' : 'Sınav Detay Analizi'}
-                    </h3>
-                    <div className="relative z-10 text-white">
-                        <FormattedText text={activeData.executive_summary?.mevcut_durum || "Veri bulunamadı."} className="text-white" textColor="text-white" />
-                    </div>
-                </div>
+            <div className="space-y-6">
+                 {/* --- DEDEKTİF RAPORU (VIDEO STYLE ANIMATED CARDS) --- */}
+                    <div className="relative z-10 mt-6">
+                        {(() => {
+                            // Prompt'tan gelen HTML etiketlerini parçalayan Fonksiyon
+                            const parseLessonCards = (text: string) => {
+                                if (!text) return [];
+                                // -500 ve -300 renk kodlarının ikisini de yakalar, hata payını sıfırlar
+                                const regex = /<span class='.*?text-(.*?)-(?:500|300).*?'>(.*?)<\/span>/gi; 
+                                const matches = Array.from(text.matchAll(regex));
+                                
+                                if (matches.length === 0) return [{ type: 'intro', lesson: 'Genel Bakış', content: text }];
+                                
+                                const cards = [];
+                                // Giriş kısmı varsa al
+                                if (matches[0].index! > 0) {
+                                    const introContent = text.substring(0, matches[0].index).trim();
+                                    if (introContent) cards.push({ type: 'intro', lesson: 'Genel Özet', content: introContent });
+                                }
+                                // Dersleri al
+                                for (let i = 0; i < matches.length; i++) {
+                                    const match = matches[i];
+                                    const lessonName = match[2];
+                                    const startOfContent = match.index! + match[0].length;
+                                    const endOfContent = (i < matches.length - 1) ? matches[i+1].index : text.length;
+                                    const content = text.substring(startOfContent, endOfContent).trim();
+                                    cards.push({ type: 'lesson', lesson: lessonName, content });
+                                }
+                                return cards;
+                            };
 
-                <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col">
-                    <div className="mb-6">
-                        <div className="bg-amber-100 dark:bg-amber-900/30 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
-                            <Target className="w-6 h-6 text-amber-600 dark:text-amber-500" />
-                        </div>
-                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">Gelecek Simülasyonu</h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide font-bold">BU ADIMLARI UYGULARSAN</p>
-                    </div>
-                    
-                    {/* NEW: Potential Bars Section */}
-                    <div className="mb-6 bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700 rounded-xl p-4">
-                        <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2 uppercase tracking-wide">
-                            <BarChart2 className="w-3 h-3" />
-                            Ders Bazlı Gelişim Kapasitesi
-                        </h4>
-                        <div className="space-y-3">
-                            {potentials.map((p, idx) => ( // Show all opportunities in fixed order
-                                <div key={idx}>
-                                    <div className="flex justify-between text-xs mb-1">
-                                        <span className="font-semibold text-slate-600 dark:text-slate-300">{p.label}</span>
-                                        <span className="text-slate-500 dark:text-slate-400">
-                                            <span className="font-medium text-slate-800 dark:text-slate-200">{p.current.toFixed(1)}</span> / <span className="font-bold">{p.limit} Net</span>
-                                        </span>
-                                    </div>
-                                    <div className="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-1.5 overflow-hidden flex">
-                                        {/* Current Net */}
-                                        <div className="h-full transition-all duration-500" style={{ width: `${p.percentage}%`, backgroundColor: p.color }}></div>
-                                        {/* Potential (Gap) - Transparent color */}
-                                        <div className="h-full relative transition-all duration-500" style={{ width: `${(p.gap / p.limit) * 100}%`, backgroundColor: `${p.color}33` }}> 
-                                        </div>
-                                    </div>
-                                    <div className="text-[10px] text-right text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">
-                                        +{p.gap.toFixed(1)} net kazanılabilir
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                            const reportCards = parseLessonCards(activeData.executive_summary?.mevcut_durum || "");
 
-                    {/* Score Comparison Section */}
-                    <div className="mb-6 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-xl p-4 space-y-4">
-                        
-                        {/* Percentile Comparison */}
-                        <div className="flex justify-between items-center border-b border-amber-200/50 dark:border-amber-800/50 pb-2">
-                            <div className="text-center">
-                                <div className="text-[10px] text-amber-800 dark:text-amber-500 font-bold uppercase">Şu An</div>
-                                <div className="text-lg font-bold text-amber-900/60 dark:text-amber-600/60 line-through decoration-amber-500/50">
-                                    %{activeData.executive_summary?.lgs_tahmini_yuzdelik ? activeData.executive_summary.lgs_tahmini_yuzdelik.toFixed(2) : '-'}
-                                </div>
-                            </div>
-                            <ArrowRight className="w-5 h-5 text-amber-500" />
-                            <div className="text-center">
-                                <div className="text-[10px] text-amber-800 dark:text-amber-500 font-bold uppercase">Hedef</div>
-                                <div className="text-2xl font-black text-amber-600 dark:text-amber-500">
-                                    %{activeData.simulasyon?.hedef_yuzdelik || 0}
-                                </div>
-                            </div>
-                        </div>
+                            return (
+                                <div className="flex overflow-x-auto pb-12 gap-8 snap-x scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 pt-4">
+                                    {reportCards.map((card, idx) => {
+                                        const isIntro = card.type === 'intro';
+                                        const config = getLessonConfig(card.lesson || "Genel");
+                                        const Icon = isIntro ? Search : config.icon;
+                                        
+                                        // Ana Renk (Videodaki gibi canlı renkler)
+                                        const baseColor = isIntro ? "#6366f1" : config.color;
 
-                        {/* Score Comparison */}
-                        <div className="flex justify-between items-center">
-                            <div className="text-center">
-                                <div className="text-[10px] text-amber-800 dark:text-amber-500 font-bold uppercase">Mevcut Puan</div>
-                                <div className="text-lg font-bold text-amber-900/60 dark:text-amber-600/60 line-through decoration-amber-500/50">
-                                    {currentScoreDisplay}
+                                        return (
+                                            <div 
+                                                key={idx} 
+                                                className={`
+                                                    relative group
+                                                    min-w-[320px] md:min-w-[400px] snap-center flex-shrink-0
+                                                    rounded-[2.5rem] p-8 
+                                                    transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]
+                                                    border border-white/50 dark:border-white/10
+                                                    overflow-hidden
+                                                    ${isIntro ? 'text-white' : 'bg-white/70 dark:bg-slate-800/60 backdrop-blur-2xl'}
+                                                `}
+                                                style={{ 
+                                                    // Giriş kartı mor gradient, diğerleri cam efekti
+                                                    background: isIntro 
+                                                        ? 'linear-gradient(135deg, #4f46e5 0%, #9333ea 100%)' 
+                                                        : undefined,
+                                                    // Hover yapınca kart yukarı kalkar ve gölgesi büyür
+                                                    boxShadow: `0 10px 30px -10px ${isIntro ? '#4f46e5' : baseColor}30`,
+                                                    animation: `fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${idx * 0.1}s backwards`
+                                                }}
+                                            >
+                                                {/* AMBIENT GLOW EFEKTİ (Arkaplanda yüzen renk topu) */}
+                                                {!isIntro && (
+                                                    <div 
+                                                        className="absolute -right-16 -top-16 w-48 h-48 rounded-full blur-[60px] opacity-20 group-hover:opacity-40 transition-opacity duration-700 pointer-events-none"
+                                                        style={{ backgroundColor: baseColor }}
+                                                    />
+                                                )}
+
+                                                {/* İKON VE BAŞLIK */}
+                                                <div className="relative z-10 flex items-center gap-5 mb-6">
+                                                    <div 
+                                                        className={`
+                                                            w-16 h-16 rounded-[1.2rem] flex items-center justify-center shadow-xl
+                                                            transform group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500
+                                                        `}
+                                                        style={{ 
+                                                            backgroundColor: isIntro ? 'rgba(255,255,255,0.2)' : 'white',
+                                                            color: isIntro ? 'white' : baseColor,
+                                                            boxShadow: `0 8px 20px -5px ${baseColor}30`
+                                                        }}
+                                                    >
+                                                        <Icon className="w-8 h-8" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 
+                                                            className="text-2xl font-black tracking-tight"
+                                                            style={{ color: isIntro ? 'white' : baseColor }}
+                                                        >
+                                                            {card.lesson}
+                                                        </h3>
+                                                        {!isIntro && (
+                                                            <div className="flex items-center gap-2 mt-1.5">
+                                                                <span className="w-2 h-2 rounded-full animate-pulse" style={{backgroundColor: baseColor}}></span>
+                                                                <span className="text-xs font-bold uppercase tracking-wider opacity-60 text-slate-600 dark:text-slate-300">
+                                                                    Performans Raporu
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* İÇERİK (MADDELER) */}
+                                                <div className="relative z-10 text-[15px] font-medium leading-relaxed custom-scrollbar max-h-[300px] overflow-y-auto pr-2">
+                                                    <div className={`whitespace-pre-line space-y-4 ${isIntro ? 'text-white/90' : 'text-slate-600 dark:text-slate-300'}`}>
+                                                        <FormattedText 
+                                                            text={card.content} 
+                                                            textColor={isIntro ? "text-white" : undefined}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* ALTTAKİ HOVER ÇİZGİSİ */}
+                                                <div 
+                                                    className="absolute bottom-0 left-0 w-full h-1.5 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left ease-out"
+                                                    style={{ backgroundColor: isIntro ? 'white' : baseColor }}
+                                                />
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                            </div>
-                            <ArrowRight className="w-5 h-5 text-amber-500" />
-                            <div className="text-center">
-                                <div className="text-[10px] text-amber-800 dark:text-amber-500 font-bold uppercase">Maksimum Potansiyel</div>
-                                <div className="text-xl font-black text-amber-600 dark:text-amber-500">
-                                    {recoverableInfo.max.toFixed(1)}
-                                </div>
-                                <div className="text-[9px] text-amber-600 dark:text-amber-400 font-bold bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full mt-1">
-                                    +{recoverableInfo.loss.toFixed(1)} Kayıp Puan
-                                </div>
-                            </div>
-                        </div>
+                            );
+                        })()}
                     </div>
-
-                    {/* Structured Steps Section */}
-                    <div className="flex-grow flex flex-col gap-3 overflow-y-auto max-h-[400px] pr-2">
+                    {/* GELECEK SİMÜLASYONU (HOVER GLOW GRID) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
                         {activeData.simulasyon?.gelisim_adimlari?.map((step, idx) => {
                             const stepConfig = getSimulationStepConfig(step.baslik);
+                            const Icon = stepConfig.icon;
+                            
                             return (
-                            <div key={idx} className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3 border border-slate-100 dark:border-slate-700 text-sm hover:border-amber-200 dark:hover:border-amber-800 transition-colors">
-                                <div className="font-bold text-slate-800 dark:text-slate-200 mb-1 flex items-center gap-2">
-                                    {/* Icon based on lesson */}
-                                    <div className="w-5 h-5 rounded-full flex items-center justify-center text-xs shrink-0 text-white" style={{ backgroundColor: stepConfig.color }}>
-                                        <stepConfig.icon className="w-3 h-3" />
+                                <div 
+                                    key={idx} 
+                                    className="group relative bg-white/50 dark:bg-slate-800/50 p-6 rounded-[2rem] border border-white/60 dark:border-slate-700 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 backdrop-blur-md overflow-hidden"
+                                    style={{ animation: `fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${idx * 0.1}s backwards` }}
+                                >
+                                    {/* MOUSE HOVER GRADYAN EFEKTİ */}
+                                    <div 
+                                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                                        style={{ background: `linear-gradient(135deg, ${stepConfig.color}15 0%, transparent 100%)` }}
+                                    />
+                                    
+                                    {/* SAĞ ÜST KÖŞE SÜSLEMESİ */}
+                                    <div className="absolute top-0 right-0 p-4 opacity-50 group-hover:opacity-100 transition-opacity">
+                                        <TrendingUp className="w-12 h-12 opacity-10 group-hover:opacity-20 transform group-hover:scale-110 transition-all" style={{color: stepConfig.color}} />
                                     </div>
-                                    {step.baslik}
-                                </div>
-                                
-                                <div className="space-y-2 mt-2 pl-7">
-                                    <div className="flex gap-2 items-start">
-                                        <Rocket className="w-3 h-3 text-brand-500 shrink-0 mt-1" />
-                                        <p className="text-slate-600 dark:text-slate-300 leading-tight">
-                                            <span className="font-semibold text-slate-700 dark:text-slate-200">Ne Yapmalı:</span> {step.ne_yapmali}
+
+                                    <div className="relative z-10">
+                                        {/* Başlık ve İkon */}
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <div 
+                                                className="p-3 rounded-2xl bg-white dark:bg-slate-700 shadow-sm group-hover:scale-110 transition-transform duration-300"
+                                            >
+                                                <Icon className="w-6 h-6" style={{ color: stepConfig.color }} />
+                                            </div>
+                                            <span 
+                                                className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-slate-100 dark:bg-slate-700/50 text-slate-500"
+                                            >
+                                                Adım {idx + 1}
+                                            </span>
+                                        </div>
+
+                                        <h4 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2 line-clamp-1 group-hover:text-brand-600 transition-colors">
+                                            {step.baslik}
+                                        </h4>
+                                        
+                                        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6 line-clamp-2 min-h-[40px]">
+                                            {step.ne_yapmali}
                                         </p>
-                                    </div>
-                                    <div className="flex gap-2 items-start">
-                                        <Footprints className="w-3 h-3 text-amber-500 shrink-0 mt-1" />
-                                        <p className="text-slate-600 dark:text-slate-300 leading-tight">
-                                            <span className="font-semibold text-slate-700 dark:text-slate-200">Yöntem:</span> {step.nasil_yapmali}
-                                        </p>
-                                    </div>
-                                    <div className="flex gap-2 items-center bg-white dark:bg-slate-800 p-1.5 rounded border border-slate-100 dark:border-slate-600">
-                                        <Clock className="w-3 h-3 text-emerald-500 shrink-0" />
-                                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{step.sure}</span>
-                                        <span className="text-slate-300 mx-1">|</span>
-                                        <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">{step.ongoru}</span>
+                                        
+                                        {/* Alt Bilgiler */}
+                                        <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700/50">
+                                            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-700/30">
+                                                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">⏱️ {step.sure}</span>
+                                            </div>
+                                            <div 
+                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl transform group-hover:translate-x-1 transition-transform"
+                                                style={{ backgroundColor: `${stepConfig.color}15` }}
+                                            >
+                                                <TrendingUp className="w-3.5 h-3.5" style={{ color: stepConfig.color }} />
+                                                <span className="text-xs font-bold" style={{ color: stepConfig.color }}>{step.ongoru}</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        )})}
-                        {!activeData.simulasyon?.gelisim_adimlari && (
-                            <p className="text-slate-500 dark:text-slate-400 italic text-sm p-2 text-center">
-                                {activeData.simulasyon?.senaryo}
-                            </p>
-                        )}
+                            );
+                        })}
                     </div>
-                </div>
             </div>
           </div>
         )}
 
-        {/* TAB 2: LESSON BASED STUDY PLAN */}
-        {activeTab === 'plan' && (
-            <div className="animate-fade-in-up">
-                <div className="mb-6 p-6 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                        <ClipboardCheck className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-                        Ders ve Kazanım Odaklı Akıllı Çalışma Planı
-                    </h3>
-                    <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-3xl">
-                        {viewScope === 'all' 
-                            ? 'Bu çalışma planı, tüm denemelerindeki ortak hataların ve kronik eksiklerin analiz edilerek oluşturulmuştur.' 
-                            : 'Bu plan, sadece seçili denemedeki eksiklerin üzerine gitmen için hazırlanmıştır.'}
-                    </p>
-                </div>
-
-                <div className="space-y-8">
-                    {Object.values(LESSON_CONFIG).map((config) => {
-                        let items = studyPlanByLesson[config.label];
-                        
-                        // IF no items are found for this lesson (perfect score or missing data), 
-                        // CREATE a default "Maintenance" item so the lesson is always displayed.
-                        if (!items || items.length === 0) {
-                             items = [{
-                                konu: "Tam Öğrenme / Rutin Kontrol",
-                                sebep: "Bu derste belirgin bir konu eksiği bulunmamaktadır. Hedef: Formu korumak.",
-                                tavsiye: `1. Haftalık branş denemesi çözerek hız kazan (Süre: 40 dk).\n2. MEB örnek sorularından geçmiş ayları tara (Süre: 30 dk).\n3. Yanlış yaptığın veya takıldığın eski soruları tekrar et (Süre: 20 dk).`,
-                                oncelik: 3
-                             }];
-                        }
-
-                        return (
-                            <div key={config.label} className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm ring-1 ring-slate-100 dark:ring-slate-700/50">
-                                <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-gradient-to-r from-slate-50 to-white dark:from-slate-800 dark:to-slate-800/80">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-3 rounded-xl text-white shadow-md transform rotate-3" style={{ backgroundColor: config.color }}>
-                                            <config.icon className="w-6 h-6" />
-                                        </div>
-                                        <div>
-                                            <h4 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{config.label}</h4>
-                                            <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
-                                                <Target className="w-3 h-3" />
-                                                {items[0].konu === "Tam Öğrenme / Rutin Kontrol" ? "Mevcut Durumu Koruma" : `${items.length} Kritik Kazanım Tespit Edildi`}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="divide-y divide-slate-100 dark:divide-slate-700">
-                                    {items.map((item: any, idx: number) => (
-                                        <div key={idx} className="p-6 md:p-8 hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors grid grid-cols-1 md:grid-cols-12 gap-8">
-                                            <div className="md:col-span-4 lg:col-span-4 flex flex-col">
-                                                <div className="mb-3">
-                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide mb-2 ${item.konu === "Tam Öğrenme / Rutin Kontrol" ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400" : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"}`}>
-                                                        {item.konu === "Tam Öğrenme / Rutin Kontrol" ? <Star className="w-3 h-3" /> : <BrainCircuit className="w-3 h-3" />}
-                                                        {item.konu === "Tam Öğrenme / Rutin Kontrol" ? "Başarı Takibi" : "Kazanım / Konu"}
-                                                    </span>
-                                                    <h5 className="text-lg font-bold text-slate-900 dark:text-slate-100 leading-tight">
-                                                        {item.konu}
-                                                    </h5>
-                                                </div>
-                                                <div className={`rounded-2xl p-4 border mt-2 relative overflow-hidden group ${item.konu === "Tam Öğrenme / Rutin Kontrol" ? "bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800" : "bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800"}`}>
-                                                    <div className={`absolute top-0 right-0 px-2 py-1 rounded-bl-lg text-[10px] font-bold uppercase ${item.konu === "Tam Öğrenme / Rutin Kontrol" ? "bg-emerald-100 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300" : "bg-amber-100 dark:bg-amber-800 text-amber-700 dark:text-amber-300"}`}>
-                                                        {item.konu === "Tam Öğrenme / Rutin Kontrol" ? "Durum" : "Teşhis"}
-                                                    </div>
-                                                    <div className="flex items-start gap-3 relative z-10">
-                                                        <div className="bg-white dark:bg-slate-800 p-1.5 rounded-full shadow-sm shrink-0 mt-0.5">
-                                                            <Stethoscope className={`w-4 h-4 ${item.konu === "Tam Öğrenme / Rutin Kontrol" ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`} />
-                                                        </div>
-                                                        <div><p className={`text-sm font-medium leading-relaxed ${item.konu === "Tam Öğrenme / Rutin Kontrol" ? "text-emerald-900 dark:text-emerald-300" : "text-amber-900 dark:text-amber-300"}`}>{item.sebep}</p></div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="md:col-span-8 lg:col-span-8 relative">
-                                                <div className="absolute left-0 top-0 bottom-0 w-px bg-slate-100 dark:bg-slate-700 -ml-4 hidden md:block"></div>
-                                                <div className="flex items-center gap-2 mb-4">
-                                                    <div className="bg-emerald-100 dark:bg-emerald-900/30 p-1.5 rounded-lg"><Pill className="w-5 h-5 text-emerald-700 dark:text-emerald-400" /></div>
-                                                    <h6 className="text-sm font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wide">Uygulanacak Adım Adım Reçete</h6>
-                                                </div>
-                                                <div className="bg-white dark:bg-slate-800 rounded-xl text-slate-700 dark:text-slate-300 text-base leading-relaxed pl-1">
-                                                    <FormattedText text={item.tavsiye} className="text-slate-700 dark:text-slate-300" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )
-                    })}
-                </div>
-            </div>
-        )}
-
-        {/* TAB 3: TOPIC ANALYSIS */}
-        {activeTab === 'konu' && (
-            <div className="space-y-6 animate-fade-in-up">
-                 
-                 {/* Lesson Selector */}
-                 <div className="flex flex-wrap gap-2 justify-between items-center">
-                    <div className="flex flex-wrap gap-2">
-                        <button
-                            onClick={() => setSelectedLessonForTopic('Genel')}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedLessonForTopic === 'Genel' ? 'bg-slate-800 dark:bg-slate-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}`}
-                        >
-                            Genel Bakış (Tümü)
-                        </button>
-                        {Object.values(LESSON_CONFIG).map((config) => (
-                            <button
-                                key={config.label}
-                                onClick={() => setSelectedLessonForTopic(config.label)}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all 
-                                    ${selectedLessonForTopic === config.label 
-                                        ? `bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 border border-brand-200 dark:border-brand-800 ring-2 ring-brand-100 dark:ring-brand-800` 
-                                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}`}
-                            >
-                                <config.icon className="w-4 h-4" style={{ color: selectedLessonForTopic === config.label ? config.color : undefined }} />
-                                {config.label}
-                            </button>
-                        ))}
-                    </div>
-                 </div>
-
-                 {/* SUMMARY CARDS - NEW 4 TIER SYSTEM */}
-                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/50 shadow-sm flex flex-col items-center text-center ring-2 ring-emerald-50 dark:ring-emerald-900/20">
-                        <div className="bg-emerald-100 dark:bg-emerald-900/30 p-2 rounded-lg mb-2 text-emerald-600 dark:text-emerald-400">
-                             <Trophy className="w-5 h-5" />
-                        </div>
-                        <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{topicStats.excellent}</div>
-                        <div className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 font-bold uppercase mt-1">Mükemmel (%80+)</div>
-                    </div>
-                    
-                    <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/50 shadow-sm flex flex-col items-center text-center">
-                        <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mb-2 text-blue-600 dark:text-blue-400">
-                             <ThumbsUp className="w-5 h-5" />
-                        </div>
-                        <div className="text-2xl font-black text-blue-600 dark:text-blue-400">{topicStats.good}</div>
-                        <div className="text-[10px] text-blue-600/80 dark:text-blue-400/80 font-bold uppercase mt-1">İyi (%70-80)</div>
-                    </div>
-
-                    <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-amber-100 dark:border-amber-900/50 shadow-sm flex flex-col items-center text-center">
-                        <div className="bg-amber-100 dark:bg-amber-900/30 p-2 rounded-lg mb-2 text-amber-600 dark:text-amber-400">
-                             <TrendingUp className="w-5 h-5" />
-                        </div>
-                        <div className="text-2xl font-black text-amber-600 dark:text-amber-400">{topicStats.improve}</div>
-                        <div className="text-[10px] text-amber-600/80 dark:text-amber-400/80 font-bold uppercase mt-1">Geliştirilmeli (%50-70)</div>
-                    </div>
-                    
-                    <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-red-100 dark:border-red-900/50 shadow-sm flex flex-col items-center text-center">
-                        <div className="bg-red-100 dark:bg-red-900/30 p-2 rounded-lg mb-2 text-red-600 dark:text-red-400">
-                             <AlertCircle className="w-5 h-5" />
-                        </div>
-                        <div className="text-2xl font-black text-red-600 dark:text-red-400">{topicStats.critical}</div>
-                        <div className="text-[10px] text-red-600/80 dark:text-red-400/80 font-bold uppercase mt-1">Kritik (%50 Altı)</div>
-                    </div>
-                 </div>
-
+        {/* TAB 2: COACHING CHAT (NEW) */}
+        {activeTab === 'koc' && (
+             <div className="animate-fade-in-up">
                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Main Performance Chart */}
-                    <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700">
-                        <div className="flex items-center justify-between mb-6">
-                            <div>
-                                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                                    <BrainCircuit className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                                    {selectedLessonForTopic} Performansı {viewScope === 'all' && <span className="text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded ml-2">Kümülatif</span>}
-                                </h3>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                                    {selectedLessonForTopic === 'Genel' 
-                                        ? 'En çok puan kaybedilen 15 kritik konu' 
-                                        : `${selectedLessonForTopic} dersindeki tüm konuların analizi`}
-                                </p>
-                            </div>
-                        </div>
+                    {/* Chat Window */}
+                    <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col h-[600px] overflow-hidden relative">
+                         {/* Header */}
+                         <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 flex items-center gap-3">
+                             <div className="bg-gradient-to-tr from-brand-500 to-indigo-500 p-2 rounded-xl text-white shadow-lg shadow-brand-500/20">
+                                 <Bot className="w-6 h-6" />
+                             </div>
+                             <div>
+                                 <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                     Kukul AI Koç
+                                     <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full uppercase font-bold tracking-wider">Online</span>
+                                 </h3>
+                                 <p className="text-xs text-slate-500 dark:text-slate-400">Verilerine dayalı kişisel eğitim danışmanın</p>
+                             </div>
+                         </div>
+                         
+                         {/* Messages Area */}
+                         <div className="flex-grow overflow-y-auto p-6 space-y-4 bg-slate-50/30 dark:bg-slate-900/30">
+                             {chatHistory.map((msg, idx) => (
+                                 <div key={idx} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                     <div className={`max-w-[85%] md:max-w-[75%] rounded-2xl p-4 text-sm leading-relaxed shadow-sm ${
+                                         msg.role === 'user' 
+                                            ? 'bg-brand-600 dark:bg-brand-600 text-white rounded-tr-none' 
+                                            : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-tl-none border border-slate-100 dark:border-slate-600'
+                                     }`}>
+                                         {msg.role === 'model' ? (
+                                             <FormattedText text={msg.text} textColor={msg.role === 'user' ? 'text-white' : undefined} />
+                                         ) : (
+                                             msg.text
+                                         )}
+                                     </div>
+                                 </div>
+                             ))}
+                             {isChatLoading && (
+                                 <div className="flex justify-start w-full">
+                                     <div className="bg-white dark:bg-slate-700 rounded-2xl rounded-tl-none p-4 border border-slate-100 dark:border-slate-600 flex items-center gap-2 shadow-sm">
+                                         <Loader2 className="w-4 h-4 text-brand-600 dark:text-brand-400 animate-spin" />
+                                         <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Kukul AI yazıyor...</span>
+                                     </div>
+                                 </div>
+                             )}
+                             <div ref={chatEndRef} />
+                         </div>
 
-                        <div className="h-[350px] w-full">
-                            {chartData.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <ComposedChart data={chartData} margin={{top: 20, right: 30, left: 20, bottom: 60}}>
-                                        <CartesianGrid stroke="#f1f5f9" vertical={false} strokeOpacity={0.1} />
-                                        <XAxis 
-                                            dataKey="konu" 
-                                            angle={-45} 
-                                            textAnchor="end" 
-                                            height={80} 
-                                            interval={0}
-                                            tick={{fill: '#64748b', fontSize: 10}} 
-                                            tickFormatter={(value) => value.length > 20 ? `${value.substring(0, 20)}...` : value}
-                                        />
-                                        <YAxis 
-                                            yAxisId="left" 
-                                            orientation="left" 
-                                            stroke={currentLessonTheme.color} 
-                                            tick={{fill: currentLessonTheme.color, fontSize: 12}}
-                                            label={{ value: 'Başarı %', angle: -90, position: 'insideLeft', fill: currentLessonTheme.color, fontSize: 12 }}
-                                        />
-                                        <YAxis 
-                                            yAxisId="right" 
-                                            orientation="right" 
-                                            stroke="#ef4444" 
-                                            tick={{fill: '#ef4444', fontSize: 12}}
-                                            label={{ value: 'Kayıp Puan', angle: 90, position: 'insideRight', fill: '#ef4444', fontSize: 12 }}
-                                        />
-                                        <Tooltip content={<CustomTopicTooltip />} cursor={{fill: 'transparent'}} />
-                                        
-                                        <Bar 
-                                            yAxisId="left" 
-                                            dataKey="basari_yuzdesi" 
-                                            fill={currentLessonTheme.fill} 
-                                            stroke={currentLessonTheme.color} 
-                                            barSize={30} 
-                                            radius={[4, 4, 0, 0]} 
-                                        />
-                                        <Line yAxisId="right" type="monotone" dataKey="lgs_kayip_puan" stroke="#ef4444" strokeWidth={3} dot={{r: 4, fill: '#ef4444'}} />
-                                    </ComposedChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <div className="h-full flex items-center justify-center text-slate-400 dark:text-slate-500 flex-col gap-2">
-                                    <AlertTriangle className="w-8 h-8 opacity-50" />
-                                    <p>Bu ders için yeterli konu verisi bulunamadı.</p>
-                                </div>
-                            )}
-                        </div>
+                         {/* Input Area */}
+                         <div className="p-4 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700">
+                             <form onSubmit={handleSendMessage} className="flex gap-3">
+                                 <input 
+                                     type="text" 
+                                     value={chatInput}
+                                     onChange={(e) => setChatInput(e.target.value)}
+                                     placeholder="Merak ettiğin her şeyi sorabilirsin..."
+                                     className="flex-grow bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-all"
+                                     disabled={isChatLoading}
+                                 />
+                                 <button 
+                                     type="submit" 
+                                     disabled={!chatInput.trim() || isChatLoading}
+                                     className="bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-white p-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg shadow-brand-500/20"
+                                 >
+                                     <Send className="w-5 h-5" />
+                                 </button>
+                             </form>
+                         </div>
                     </div>
 
-                    {/* Status Distribution Pie Chart */}
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col">
-                         <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">Başarı Durumu Dağılımı</h3>
-                         <div className="flex-grow flex items-center justify-center min-h-[300px]">
-                            {topicStats.total > 0 ? (
-                                <ResponsiveContainer width="100%" height={300}>
-                                    <PieChart>
-                                        <Pie
-                                            data={topicStats.pieData}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={60}
-                                            outerRadius={90}
-                                            paddingAngle={5}
-                                            dataKey="value"
-                                        >
-                                            {topicStats.pieData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.color} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip 
-                                            formatter={(value, name) => [`${value} Konu`, name]}
-                                            contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', backgroundColor: 'var(--tooltip-bg, #fff)'}}
-                                        />
-                                        <Legend 
-                                            verticalAlign="bottom" 
-                                            height={70} 
-                                            iconType="circle"
-                                            layout="horizontal"
-                                            wrapperStyle={{ fontSize: '11px', bottom: 0 }}
-                                        />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <div className="text-slate-400 dark:text-slate-500 text-sm">Veri yok</div>
-                            )}
+                    {/* Sidebar Suggestions */}
+                    <div className="bg-gradient-to-br from-indigo-900 to-brand-900 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden flex flex-col justify-between">
+                         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+                         
+                         <div className="relative z-10">
+                             <h4 className="font-bold text-lg mb-4 flex items-center gap-2">
+                                 <Lightbulb className="w-5 h-5 text-yellow-300" />
+                                 Neler Sorabilirsin?
+                             </h4>
+                             <div className="space-y-3">
+                                 {[
+                                     "Matematik netlerimi nasıl artırabilirim?",
+                                     "Hangi konularda eksiğim var?",
+                                     "Benim için günlük bir çalışma planı yapar mısın?",
+                                     "Motivasyonum düştü, bana bir şeyler söyle!",
+                                     "LGS'de hedeflediğim liseye girmek için ne yapmalıyım?"
+                                 ].map((suggestion, idx) => (
+                                     <button 
+                                         key={idx}
+                                         onClick={() => {
+                                             setChatInput(suggestion);
+                                             // Optional: auto submit
+                                             // handleSendMessage(); 
+                                         }}
+                                         className="w-full text-left bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl p-3 text-xs md:text-sm transition-all"
+                                     >
+                                         {suggestion}
+                                     </button>
+                                 ))}
+                             </div>
+                         </div>
+
+                         <div className="relative z-10 mt-6 pt-6 border-t border-white/10 text-center">
+                             <p className="text-xs text-white/60 italic">
+                                 "Kukul AI, senin verilerine göre konuşur. Ne kadar çok deneme yüklersen, seni o kadar iyi tanır."
+                             </p>
                          </div>
                     </div>
                  </div>
+             </div>
+        )}
 
-                 {/* Detailed Table */}
-                 <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/80">
-                         <div>
-                            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Detaylı Konu Karnesi ({selectedLessonForTopic})</h3>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Renkli etiketler başarı durumunu gösterir.</p>
+        {/* Tab 3: Plan */}
+        {activeTab === 'plan' && (
+             <div className="animate-fade-in-up">
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                     {Object.keys(studyPlanByLesson).map((lessonLabel, idx) => {
+                         const lessonPlan = studyPlanByLesson[lessonLabel];
+                         const lessonConf = Object.values(LESSON_CONFIG).find(c => c.label === lessonLabel) || { color: '#64748b', icon: BookOpen };
+                         
+                         return (
+                             <div key={idx} className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-slate-700 h-full">
+                                 <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-100 dark:border-slate-700">
+                                     <div className="p-1.5 rounded-lg text-white" style={{ backgroundColor: lessonConf.color }}>
+                                         <lessonConf.icon className="w-4 h-4" />
+                                     </div>
+                                     <h3 className="font-bold text-slate-800 dark:text-slate-100">{lessonLabel}</h3>
+                                     <span className="ml-auto text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-full text-slate-500 font-bold">{lessonPlan.length} Görev</span>
+                                 </div>
+                                 <div className="space-y-4">
+                                     {lessonPlan.sort((a,b) => a.oncelik - b.oncelik).map((item, i) => (
+                                         <div key={i} className={`p-3 rounded-xl border-l-4 ${item.oncelik === 1 ? 'bg-red-50 dark:bg-red-900/10 border-red-500' : item.oncelik === 2 ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-500' : 'bg-blue-50 dark:bg-blue-900/10 border-blue-500'}`}>
+                                             <div className="flex justify-between items-start mb-1">
+                                                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{item.konu}</span>
+                                                 {item.oncelik === 1 && <span className="text-[10px] font-bold text-white bg-red-500 px-1.5 py-0.5 rounded">ACİL</span>}
+                                             </div>
+                                             <p className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">{item.tavsiye}</p>
+                                             <p className="text-xs text-slate-500 dark:text-slate-400 italic">"{item.sebep}"</p>
+                                         </div>
+                                     ))}
+                                 </div>
+                             </div>
+                         )
+                     })}
+                     {Object.keys(studyPlanByLesson).length === 0 && (
+                         <div className="col-span-full text-center p-12 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700">
+                             <ListTodo className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                             <h3 className="text-lg font-semibold text-slate-600 dark:text-slate-400">Bu analiz için özel bir çalışma planı oluşturulamadı.</h3>
+                             <p className="text-slate-500 text-sm">Genel eksiklerini konu analizi sekmesinden inceleyebilirsin.</p>
                          </div>
-                         <span className="text-xs text-slate-500 dark:text-slate-400 italic">Sıralamak için başlıklara tıklayın</span>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-xs uppercase font-semibold">
-                            <tr>
-                                <th 
-                                    className="px-6 py-4 w-1/4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors group"
-                                    onClick={() => handleSort('konu')}
-                                >
-                                    <div className="flex items-center gap-2">
-                                        Konu
-                                        <RenderSortIcon columnKey="konu" />
-                                    </div>
-                                </th>
-                                {selectedLessonForTopic === 'Genel' && (
-                                    <th 
-                                        className="px-6 py-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors group"
-                                        onClick={() => handleSort('ders')}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            Ders
-                                            <RenderSortIcon columnKey="ders" />
-                                        </div>
-                                    </th>
-                                )}
-                                <th 
-                                    className="px-6 py-4 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors group"
-                                    onClick={() => handleSort('soru_dagilimi')}
-                                >
-                                    <div className="flex items-center justify-center gap-2">
-                                        {viewScope === 'all' ? 'Top. Soru (D/Y/B)' : 'Soru (D/Y/B)'}
-                                        <RenderSortIcon columnKey="soru_dagilimi" />
-                                    </div>
-                                </th>
-                                <th 
-                                    className="px-6 py-4 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors group"
-                                    onClick={() => handleSort('net_kaybi')}
-                                >
-                                    <div className="flex items-center justify-center gap-2">
-                                        Net Kaybı
-                                        <RenderSortIcon columnKey="net_kaybi" />
-                                    </div>
-                                </th>
-                                <th 
-                                    className="px-6 py-4 w-1/4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors group"
-                                    onClick={() => handleSort('basari_yuzdesi')}
-                                >
-                                    <div className="flex items-center gap-2">
-                                        Başarı Yüzdesi
-                                        <RenderSortIcon columnKey="basari_yuzdesi" />
-                                    </div>
-                                </th>
-                                <th 
-                                    className="px-6 py-4 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors group"
-                                    onClick={() => handleSort('lgs_kayip_puan')}
-                                >
-                                    <div className="flex items-center justify-center gap-2">
-                                        LGS Kayıp
-                                        <RenderSortIcon columnKey="lgs_kayip_puan" />
-                                    </div>
-                                </th>
-                                <th 
-                                    className="px-6 py-4 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors group"
-                                    onClick={() => handleSort('durum')}
-                                >
-                                    <div className="flex items-center justify-center gap-2">
-                                        Durum
-                                        <RenderSortIcon columnKey="durum" />
-                                    </div>
-                                </th>
-                            </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                            {sortedTopics.map((konu, idx) => (
-                                <tr key={idx} className={`hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors ${konu.durum === 'Kritik' ? 'bg-red-50/30 dark:bg-red-900/10' : ''}`}>
-                                    <td className="px-6 py-4">
-                                        <div className="font-bold text-slate-700 dark:text-slate-200">{konu.konu}</div>
-                                    </td>
-                                    {selectedLessonForTopic === 'Genel' && (
-                                        <td className="px-6 py-4">
-                                            <span className="text-xs font-medium px-2 py-1 rounded bg-slate-100 dark:bg-slate-600 text-slate-600 dark:text-slate-300">
-                                                {konu.ders}
-                                            </span>
-                                        </td>
-                                    )}
-                                    <td className="px-6 py-4 text-center">
-                                        <div className="flex items-center justify-center gap-2 text-sm">
-                                            <span className="text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded">{konu.dogru} D</span>
-                                            <span className="text-red-500 dark:text-red-400 font-bold bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded">{konu.yanlis} Y</span>
-                                            <span className="text-slate-400 dark:text-slate-500 font-medium bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">{konu.bos} B</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                        <span className="text-sm font-semibold text-slate-600 dark:text-slate-400">
-                                            -{(konu.yanlis / 3).toFixed(2)} Net
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 align-middle">
-                                        <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2.5 mb-1 overflow-hidden">
-                                            <div 
-                                                className={`h-2.5 rounded-full ${
-                                                    konu.basari_yuzdesi >= 80 ? 'bg-emerald-500' :
-                                                    konu.basari_yuzdesi >= 70 ? 'bg-blue-500' :
-                                                    konu.basari_yuzdesi >= 50 ? 'bg-amber-400' : 'bg-red-500'
-                                                }`} 
-                                                style={{ width: `${konu.basari_yuzdesi}%` }}
-                                            ></div>
-                                        </div>
-                                        <div className="text-xs text-slate-500 dark:text-slate-400 font-medium text-right">
-                                            %{konu.basari_yuzdesi?.toFixed(1) || 0}
-                                        </div>
-                                    </td>
-                                    <td className={`px-6 py-4 text-center ${sortConfig.key === 'lgs_kayip_puan' ? 'bg-slate-100/50 dark:bg-slate-700/50' : ''}`}>
-                                        <span className={`text-base font-bold ${konu.lgs_kayip_puan > 0.5 ? 'text-red-600 dark:text-red-400' : 'text-slate-600 dark:text-slate-400'}`}>
-                                            -{konu.lgs_kayip_puan}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                        {konu.durum === 'Mükemmel' && (
-                                            <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-1 rounded-md text-xs font-bold whitespace-nowrap">
-                                                <Trophy className="w-3 h-3" /> MÜKEMMEL
-                                            </span>
-                                        )}
-                                        {konu.durum === 'İyi' && (
-                                            <span className="inline-flex items-center gap-1 text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-md text-xs font-bold whitespace-nowrap">
-                                                <ThumbsUp className="w-3 h-3" /> İYİ
-                                            </span>
-                                        )}
-                                        {konu.durum === 'Geliştirilmeli' && (
-                                            <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/30 px-2 py-1 rounded-md text-xs font-bold whitespace-nowrap">
-                                                <TrendingUp className="w-3 h-3" /> GELİŞTİRİLMELİ
-                                            </span>
-                                        )}
-                                        {konu.durum === 'Kritik' && (
-                                            <span className="inline-flex items-center gap-1 text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded-md text-xs font-bold whitespace-nowrap">
-                                                <AlertTriangle className="w-3 h-3" /> KRİTİK
-                                            </span>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
-                            </tbody>
-                        </table>
+                     )}
+                 </div>
+             </div>
+        )}
+        
+        {/* Tab 4: Konu */}
+        {activeTab === 'konu' && (
+             <div className="animate-fade-in-up space-y-6">
+                 {/* Filters & Summary */}
+                 <div className="flex flex-col md:flex-row gap-6">
+                     <div className="w-full md:w-1/4 space-y-4">
+                         <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+                             <h4 className="font-bold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2">
+                                 <Filter className="w-4 h-4" /> Ders Filtrele
+                             </h4>
+                             <div className="space-y-2">
+                                 <button 
+                                    onClick={() => setSelectedLessonForTopic('Genel')}
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${selectedLessonForTopic === 'Genel' ? 'bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400' : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400'}`}
+                                 >
+                                     Tüm Dersler
+                                 </button>
+                                 {Object.keys(LESSON_CONFIG).map(lesson => (
+                                     <button 
+                                        key={lesson}
+                                        onClick={() => setSelectedLessonForTopic(lesson)}
+                                        className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${selectedLessonForTopic === lesson ? 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white font-bold' : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400'}`}
+                                     >
+                                         <div className="w-2 h-2 rounded-full" style={{ backgroundColor: LESSON_CONFIG[lesson].color }}></div>
+                                         {lesson}
+                                     </button>
+                                 ))}
+                             </div>
+                         </div>
+                         
+                         {/* Stats Summary Card */}
+                         <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+                             <h4 className="font-bold text-slate-700 dark:text-slate-200 mb-4">Durum Özeti</h4>
+                             <div className="h-40 relative">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                     <PieChart>
+                                         <Pie
+                                             data={topicStats.pieData}
+                                             cx="50%"
+                                             cy="50%"
+                                             innerRadius={40}
+                                             outerRadius={60}
+                                             paddingAngle={5}
+                                             dataKey="value"
+                                         >
+                                             {topicStats.pieData.map((entry, index) => (
+                                                 <Cell key={`cell-${index}`} fill={entry.color} />
+                                             ))}
+                                         </Pie>
+                                         <Tooltip />
+                                     </PieChart>
+                                  </ResponsiveContainer>
+                                  <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+                                      <span className="text-2xl font-black text-slate-800 dark:text-slate-100">{topicStats.total}</span>
+                                      <span className="text-[10px] text-slate-400 uppercase font-bold">Konu</span>
+                                  </div>
+                             </div>
+                             <div className="grid grid-cols-2 gap-2 mt-4">
+                                 <div className="text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded text-center font-bold">{topicStats.excellent} Mükemmel</div>
+                                 <div className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded text-center font-bold">{topicStats.good} İyi</div>
+                                 <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded text-center font-bold">{topicStats.improve} Gelişmeli</div>
+                                 <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded text-center font-bold">{topicStats.critical} Kritik</div>
+                             </div>
+                         </div>
                      </div>
-                </div>
-            </div>
-        )}
 
-        {/* TAB 4: TRENDS (Completely Redesigned) */}
-        {activeTab === 'trend' && (
-            <div className="animate-fade-in-up space-y-6">
-
-               {/* Trend Sub-Navigation */}
-               <div className="flex flex-wrap items-center justify-between gap-4 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-full md:w-fit">
-                  <button 
-                    onClick={() => setTrendSubTab('all')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${trendSubTab === 'all' ? 'bg-white dark:bg-slate-600 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                  >
-                    <Activity className="w-4 h-4" /> Tüm Gelişim
-                  </button>
-                  <button 
-                    onClick={() => setTrendSubTab('last3')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${trendSubTab === 'last3' ? 'bg-white dark:bg-slate-600 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                  >
-                    <TrendingUp className="w-4 h-4" /> Son 3 Sınav Analizi
-                  </button>
-                  <button 
-                    onClick={() => setTrendSubTab('individual')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${trendSubTab === 'individual' ? 'bg-white dark:bg-slate-600 text-slate-800 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                  >
-                    <LayoutGrid className="w-4 h-4" /> Sınav Karneleri (Tek Tek)
-                  </button>
-               </div>
-
-               {/* SUB-VIEW 1: ALL TIME TRENDS */}
-               {trendSubTab === 'all' && (
-                 <div className="space-y-6">
-                     <div className="flex flex-wrap gap-2">
-                        <button
-                            onClick={() => setSelectedTrendLesson('Tümü')}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedTrendLesson === 'Tümü' ? 'bg-slate-800 dark:bg-slate-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}`}
-                        >
-                            Tüm Dersler
-                        </button>
-                        {Object.values(LESSON_CONFIG).map((config) => (
-                            <button
-                                key={config.label}
-                                onClick={() => setSelectedTrendLesson(config.label)}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all 
-                                    ${selectedTrendLesson === config.label 
-                                        ? `bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 border border-brand-200 dark:border-brand-800 ring-2 ring-brand-100 dark:ring-brand-800` 
-                                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}`}
-                            >
-                                <config.icon className="w-4 h-4" style={{ color: selectedTrendLesson === config.label ? config.color : undefined }} />
-                                {config.label}
-                            </button>
-                        ))}
-                    </div>
-
-                    <div className={`grid gap-6 ${selectedTrendLesson === 'Tümü' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
-                        {displayedTrendLessons.map(([lessonKey, config]) => (
-                            <div key={lessonKey} className={`bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 ${selectedTrendLesson !== 'Tümü' ? 'min-h-[400px]' : ''}`}>
-                                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2 flex items-center gap-2">
-                                    <config.icon className="w-5 h-5" style={{ color: config.color }} />
-                                    {config.label} Gelişimi
-                                </h3>
-                                <div className={`${selectedTrendLesson !== 'Tümü' ? 'h-[350px]' : 'h-[250px]'} w-full`}>
-                                    {globalTrendData.length > 0 ? (
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={globalTrendData}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.1} />
-                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 10}} dy={10} interval="preserveStartEnd" />
-                                            <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} domain={[0, 'auto']} width={30} />
-                                            <Tooltip 
-                                                contentStyle={{backgroundColor: 'var(--tooltip-bg, #fff)', borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
-                                                formatter={(value: any) => [`${value} Net`, 'Net']}
-                                                labelStyle={{color: '#64748b', marginBottom: '0.25rem'}}
-                                            />
-                                            {/* Highlight if viewScope matches the analysis ID (parent) of this data point */}
-                                            {viewScope !== 'all' && (
-                                                <ReferenceLine x={activeData.exams_history?.[0]?.sinav_adi?.substring(0, 15) + '...'} stroke="red" strokeDasharray="3 3" />
-                                            )}
-                                            <Line 
-                                                type="monotone" 
-                                                dataKey={lessonKey} 
-                                                stroke={config.color} 
-                                                strokeWidth={3}
-                                                dot={{r: 4, fill: config.color}}
-                                                activeDot={{r: 6, strokeWidth: 0}}
-                                                connectNulls={true} 
-                                            />
-                                        </LineChart>
-                                    </ResponsiveContainer>
-                                    ) : <div className="h-full flex items-center justify-center text-slate-400 dark:text-slate-500">Veri yok.</div>}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                     {/* Topic Table */}
+                     <div className="flex-grow bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
+                         <div className="overflow-x-auto">
+                             <table className="w-full text-sm text-left">
+                                 <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 uppercase text-xs font-bold tracking-wider">
+                                     <tr>
+                                         <th onClick={() => handleSort('konu')} className="px-6 py-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 group">
+                                             <div className="flex items-center gap-1">Konu <RenderSortIcon columnKey="konu"/></div>
+                                         </th>
+                                         <th onClick={() => handleSort('ders')} className="px-6 py-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 group">
+                                             <div className="flex items-center gap-1">Ders <RenderSortIcon columnKey="ders"/></div>
+                                         </th>
+                                         <th className="px-6 py-4 text-center">Soru Dağılımı</th>
+                                         <th onClick={() => handleSort('basari_yuzdesi')} className="px-6 py-4 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 group">
+                                             <div className="flex items-center gap-1 justify-center">Başarı <RenderSortIcon columnKey="basari_yuzdesi"/></div>
+                                         </th>
+                                         <th onClick={() => handleSort('lgs_kayip_puan')} className="px-6 py-4 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 group">
+                                             <div className="flex items-center gap-1 justify-center">LGS Kayıp <RenderSortIcon columnKey="lgs_kayip_puan"/></div>
+                                         </th>
+                                     </tr>
+                                 </thead>
+                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                     {chartData.length === 0 ? (
+                                         <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500">Bu filtrede konu bulunamadı.</td></tr>
+                                     ) : (
+                                         chartData.map((topic, i) => (
+                                             <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                                                 <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-200 max-w-[200px] truncate" title={topic.konu}>
+                                                     {topic.konu}
+                                                 </td>
+                                                 <td className="px-6 py-4">
+                                                     <span className="text-[10px] font-bold px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 uppercase">
+                                                         {getLessonConfig(topic.ders).label}
+                                                     </span>
+                                                 </td>
+                                                 <td className="px-6 py-4">
+                                                     <div className="flex items-center justify-center gap-1">
+                                                         <div className="flex flex-col items-center w-8">
+                                                             <span className="text-emerald-600 font-bold">{topic.dogru}</span>
+                                                             <span className="text-[9px] text-slate-400">D</span>
+                                                         </div>
+                                                         <div className="flex flex-col items-center w-8 border-x border-slate-100 dark:border-slate-700">
+                                                             <span className="text-red-500 font-bold">{topic.yanlis}</span>
+                                                             <span className="text-[9px] text-slate-400">Y</span>
+                                                         </div>
+                                                         <div className="flex flex-col items-center w-8">
+                                                             <span className="text-slate-400 font-bold">{topic.bos}</span>
+                                                             <span className="text-[9px] text-slate-400">B</span>
+                                                         </div>
+                                                     </div>
+                                                 </td>
+                                                 <td className="px-6 py-4 text-center">
+                                                     <div className="relative w-12 h-12 mx-auto">
+                                                        <ResponsiveContainer>
+                                                            <PieChart>
+                                                                <Pie
+                                                                    data={[{value: topic.basari_yuzdesi}, {value: 100-topic.basari_yuzdesi}]}
+                                                                    innerRadius={18}
+                                                                    outerRadius={24}
+                                                                    dataKey="value"
+                                                                    startAngle={90}
+                                                                    endAngle={-270}
+                                                                    stroke="none"
+                                                                >
+                                                                    <Cell fill={
+                                                                        topic.basari_yuzdesi >= 80 ? '#10b981' : 
+                                                                        topic.basari_yuzdesi >= 70 ? '#3b82f6' : 
+                                                                        topic.basari_yuzdesi >= 50 ? '#f59e0b' : '#ef4444'
+                                                                    } />
+                                                                    <Cell fill="#e2e8f0" />
+                                                                </Pie>
+                                                            </PieChart>
+                                                        </ResponsiveContainer>
+                                                        <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                                                            %{Math.round(topic.basari_yuzdesi)}
+                                                        </div>
+                                                     </div>
+                                                 </td>
+                                                 <td className="px-6 py-4 text-center">
+                                                     <span className="text-red-600 dark:text-red-400 font-bold bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
+                                                         -{topic.lgs_kayip_puan.toFixed(2)}
+                                                     </span>
+                                                 </td>
+                                             </tr>
+                                         ))
+                                     )}
+                                 </tbody>
+                             </table>
+                         </div>
+                     </div>
                  </div>
-               )}
-
-               {/* SUB-VIEW 2: LAST 3 EXAMS */}
-               {trendSubTab === 'last3' && (
-                   <div className="space-y-6">
-                       <div className="bg-gradient-to-r from-brand-600 to-indigo-700 dark:from-brand-800 dark:to-indigo-900 text-white p-6 rounded-3xl mb-6">
-                           <h3 className="text-xl font-bold mb-2">Son 3 Deneme Performans Özeti</h3>
-                           <p className="text-brand-100 dark:text-brand-200">Son 3 sınavındaki net değişimlerini analiz ederek anlık durumunu tespit ettik.</p>
-                       </div>
-
-                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                           {Object.values(LESSON_CONFIG).map((config) => {
-                               const last3Data = globalTrendData.slice(-3);
-                               if (last3Data.length === 0) return null;
-
-                               return (
-                                   <div key={config.label} className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden">
-                                       <div className="flex justify-between items-start mb-4">
-                                            <div className="flex items-center gap-2">
-                                                <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-                                                    <config.icon className="w-5 h-5" style={{ color: config.color }} />
-                                                </div>
-                                                <span className="font-bold text-slate-700 dark:text-slate-200">{config.label}</span>
-                                            </div>
-                                            {getTrendIcon(last3Data, config.label)}
-                                       </div>
-                                       
-                                       <div className="h-[150px] w-full mt-4">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <BarChart data={last3Data}>
-                                                    <XAxis dataKey="date" tick={{fontSize: 10}} axisLine={false} tickLine={false} />
-                                                    <Tooltip cursor={{fill: 'transparent'}} contentStyle={{borderRadius: '8px', backgroundColor: 'var(--tooltip-bg, #fff)'}} />
-                                                    <Bar dataKey={config.label} fill={config.color} radius={[4, 4, 0, 0]} barSize={40}>
-                                                        <Cell key={`cell-${0}`} fillOpacity={0.4} />
-                                                        <Cell key={`cell-${1}`} fillOpacity={0.6} />
-                                                        <Cell key={`cell-${2}`} fillOpacity={1} />
-                                                    </Bar>
-                                                </BarChart>
-                                            </ResponsiveContainer>
-                                       </div>
-                                   </div>
-                               )
-                           })}
-                       </div>
-                   </div>
-               )}
-
-               {/* SUB-VIEW 3: INDIVIDUAL CARDS (Updated for interactivity) */}
-               {trendSubTab === 'individual' && (
-                   <div className="grid grid-cols-1 gap-6">
-                       {[...globalTrendData].reverse().map((exam, idx) => (
-                           <div 
-                                key={idx} 
-                                className={`bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 flex flex-col md:flex-row gap-8 items-center transition-all hover:border-brand-300 dark:hover:border-brand-600 hover:shadow-md cursor-pointer ${viewScope === exam.id ? 'ring-2 ring-brand-500 dark:ring-brand-500' : ''}`}
-                                onClick={() => setViewScope(exam.id)} // Click to focus this exam set context
-                           >
-                               {/* Exam Info */}
-                               <div className="w-full md:w-1/4 flex flex-col gap-2 border-b md:border-b-0 md:border-r border-slate-100 dark:border-slate-700 pb-4 md:pb-0 md:pr-4">
-                                   <div className="flex items-center gap-2">
-                                        <h4 className="font-bold text-lg text-slate-800 dark:text-slate-100 line-clamp-2">{exam.name}</h4>
-                                        {viewScope === exam.id && <span className="bg-brand-100 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 text-xs px-2 py-0.5 rounded-full font-bold">Seçili</span>}
-                                   </div>
-                                   <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
-                                       <Calendar className="w-4 h-4" />
-                                       {exam.date}
-                                   </div>
-                                   <div className="mt-2 bg-slate-50 dark:bg-slate-700 p-3 rounded-xl border border-slate-100 dark:border-slate-600 text-center">
-                                       <span className="block text-xs text-slate-400 dark:text-slate-500 font-bold uppercase">Toplam Puan</span>
-                                       <span className="text-2xl font-black text-brand-600 dark:text-brand-400">{exam.totalScore}</span>
-                                   </div>
-                                   <div className="text-xs text-slate-400 dark:text-slate-500 mt-2 flex items-center gap-1 justify-center md:justify-start">
-                                       <LayoutGrid className="w-3 h-3" />
-                                       Detaylı analiz için tıklayın
-                                   </div>
-                               </div>
-
-                               {/* Mini Bar Chart for Exam Nets */}
-                               <div className="w-full md:w-3/4 h-[180px]">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart 
-                                            data={Object.values(LESSON_CONFIG).map(conf => ({ name: conf.label, net: exam[conf.label], color: conf.color }))}
-                                            layout="horizontal"
-                                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                                        >
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                                            <XAxis dataKey="name" tick={{fontSize: 11, fill: '#64748b'}} axisLine={false} tickLine={false} interval={0} />
-                                            <YAxis hide />
-                                            <Tooltip cursor={{fill: 'transparent'}} formatter={(val) => [`${val} Net`, '']} contentStyle={{backgroundColor: 'var(--tooltip-bg, #fff)'}} />
-                                            <Bar dataKey="net" radius={[4, 4, 0, 0]}>
-                                                {Object.values(LESSON_CONFIG).map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                                ))}
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                               </div>
-                           </div>
-                       ))}
-                   </div>
-               )}
-
-            </div>
+             </div>
         )}
 
+        {/* Tab 5: Trend */}
+        {activeTab === 'trend' && (
+            <div className="animate-fade-in-up space-y-8">
+                {globalTrendData.length < 2 ? (
+                    <div className="text-center p-12 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700">
+                        <Activity className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-slate-600 dark:text-slate-400">Yeterli veri yok</h3>
+                        <p className="text-slate-500 text-sm">Trend analizi için en az 2 farklı sınav yüklemelisin.</p>
+                    </div>
+                ) : (
+                    <>
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Gelişim Grafiği</h3>
+                                <p className="text-slate-500 dark:text-slate-400 text-sm">{globalTrendData.length} sınav üzerinden değerlendirme</p>
+                            </div>
+                            <div className="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-lg">
+                                <button 
+                                    onClick={() => setSelectedTrendLesson('Tümü')} 
+                                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${selectedTrendLesson === 'Tümü' ? 'bg-white dark:bg-slate-600 text-brand-600 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
+                                >
+                                    Genel Puan
+                                </button>
+                                {Object.keys(LESSON_CONFIG).map(l => (
+                                    <button 
+                                        key={l} 
+                                        onClick={() => setSelectedTrendLesson(l)} 
+                                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${selectedTrendLesson === l ? 'bg-white dark:bg-slate-600 text-brand-600 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
+                                    >
+                                        {l}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 h-80">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={globalTrendData}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.5} />
+                                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} dy={10} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} domain={['auto', 'auto']} />
+                                    <Tooltip 
+                                        contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', backgroundColor: 'var(--tooltip-bg, #fff)'}}
+                                        cursor={{stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '4 4'}}
+                                    />
+                                    <Legend iconType="circle" />
+                                    {selectedTrendLesson === 'Tümü' ? (
+                                        <Line 
+                                            type="monotone" 
+                                            dataKey="totalScore" 
+                                            name="Toplam Puan" 
+                                            stroke="#4f46e5" 
+                                            strokeWidth={4} 
+                                            dot={{r: 4, strokeWidth: 2, fill: '#fff'}} 
+                                            activeDot={{r: 6}}
+                                        />
+                                    ) : (
+                                        <Line 
+                                            type="monotone" 
+                                            dataKey={selectedTrendLesson} 
+                                            name={`${selectedTrendLesson} Net`} 
+                                            stroke={LESSON_CONFIG[selectedTrendLesson].color} 
+                                            strokeWidth={4} 
+                                            dot={{r: 4, strokeWidth: 2, fill: '#fff'}} 
+                                            activeDot={{r: 6}} 
+                                        />
+                                    )}
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </>
+                )}
+            </div>
+        )}
       </div>
     </div>
   );

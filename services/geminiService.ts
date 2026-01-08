@@ -1,7 +1,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SYSTEM_PROMPT } from "../constants";
-import { ComprehensiveAnalysis } from "../types";
+import { ComprehensiveAnalysis, ChatMessage } from "../types";
 import { AppConfig, validateConfig } from "../config";
+import { validateAndSanitizeAnalysis } from "./validationService";
 
 // Initialize the client helper
 const getClient = () => {
@@ -92,7 +93,7 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
             executive_summary: {
                 type: Type.OBJECT, 
                 properties: {
-                    mevcut_durum: { type: Type.STRING, description: "Compact HTML string. 6 dersi (Mat, Fen, Tr, İnk, İng, Din) kısa paragraflarla analiz et. Ders isimlerini span class='text-blue-300 font-bold' vb. ile renklendir." },
+                    mevcut_durum: { type: Type.STRING, description: "HTML etiketli string. Öğrenciye 'Sen' diye hitap eden, koçluk diliyle yazılmış, motivasyon dolu analiz. 6 dersi (Mat, Fen, Tr, İnk, İng, Din) ayrı paragraflarda ele al. Ders adlarını <span class='text-blue-300 font-bold'>Matematik</span> vb. ile renklendir." },
                     guclu_yonler: { type: Type.ARRAY, items: { type: Type.STRING } },
                     zayif_yonler: { type: Type.ARRAY, items: { type: Type.STRING } },
                     lgs_tahmini_yuzdelik: { type: Type.NUMBER }
@@ -101,6 +102,7 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
             },
             exams_history: {
                 type: Type.ARRAY,
+                description: "Belgedeki 'Sınav Listesi' veya 'Geçmiş Sınavlar' tablosunu bul. Sadece son sınavı değil, tablodaki TÜM GEÇMİŞ SINAVLARI satır satır buraya ekle. Ortalama hesabı için kritiktir.",
                 items: {
                     type: Type.OBJECT,
                     properties: {
@@ -111,6 +113,7 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
                         genel_yuzdelik: { type: Type.NUMBER },
                         ders_netleri: { 
                            type: Type.ARRAY, 
+                           description: "Bu sınav satırında yer alan ders netleri.",
                            items: { 
                              type: Type.OBJECT,
                              properties: {
@@ -126,7 +129,7 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
             },
             konu_analizi: {
                 type: Type.ARRAY,
-                description: "OCR Veri Motoru çıktısı. Belgedeki TÜM SATIRLARI eksiksiz içerir. Sütun sütun taranmış, birebir kopya.",
+                description: "OCR Veri Motoru çıktısı. Belgedeki TÜM konu satırlarını eksiksiz içerir. İki sütunlu tabloları atlamadan, satır satır tara. Özetleme yapma.",
                 items: {
                     type: Type.OBJECT,
                     properties: {
@@ -195,16 +198,24 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
     // --- 3. Safety & Response Validation ---
     if (response.candidates && response.candidates.length > 0) {
         const candidate = response.candidates[0];
+        
+        // Handle specific finish reasons
         if (candidate.finishReason !== "STOP") {
             console.warn(`${logPrefix} Abnormal finish reason: ${candidate.finishReason}`);
             
             if (candidate.finishReason === "SAFETY") {
                 console.error(`${logPrefix} Safety Ratings:`, candidate.safetyRatings);
-                throw new Error("Görsel içerik güvenlik filtrelerine takıldı. Lütfen görselin net ve uygun olduğundan emin olun.");
+                throw new Error("Görsel içerik güvenlik filtrelerine takıldı (Şiddet, Nefret söylemi vb.). Lütfen sadece eğitim materyali içerdiğinden emin olun.");
             }
             if (candidate.finishReason === "MAX_TOKENS") {
                 console.error(`${logPrefix} Output truncated due to MAX_TOKENS.`);
-                throw new Error("Analiz sonucu çok uzun olduğu için kesildi. Lütfen daha az sayıda sınav yükleyin.");
+                throw new Error("Analiz sonucu çok uzun olduğu için kesildi. Lütfen daha az sayıda sayfa yüklemeyi deneyin.");
+            }
+            if (candidate.finishReason === "RECITATION") {
+                throw new Error("Model, içerikteki metnin telif hakkı veya ezberlenmiş içerik korumasına takıldığını tespit etti. Lütfen farklı bir görsel deneyin.");
+            }
+            if (candidate.finishReason === "OTHER") {
+                throw new Error("Analiz işlemi teknik bir nedenden dolayı tamamlanamadı. Lütfen tekrar deneyin.");
             }
         }
     }
@@ -212,20 +223,24 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
     const textResponse = response.text;
     if (!textResponse) {
       console.error(`${logPrefix} Empty text response. Full Response Object:`, JSON.stringify(response, null, 2));
-      throw new Error("Model boş yanıt döndürdü. Görsel okunabilir olmayabilir veya içerik algılanamadı.");
+      throw new Error("Model boş yanıt döndürdü. Görsel bulanık olabilir veya metin içerip içermediğini kontrol edin.");
     }
 
     const cleanJson = textResponse.replace(/```json|```/g, '').trim();
 
-    // --- 4. JSON Parsing ---
+    // --- 4. JSON Parsing & Validating ---
     try {
-        const result: ComprehensiveAnalysis = JSON.parse(cleanJson);
+        const rawResult = JSON.parse(cleanJson);
+        
+        // Pass through the validation service to ensure data integrity and type safety
+        const validatedResult = validateAndSanitizeAnalysis(rawResult);
+        
         console.groupEnd();
-        return result;
+        return validatedResult;
     } catch (parseError) {
-        console.error(`${logPrefix} JSON Parse Error:`, parseError);
+        console.error(`${logPrefix} JSON Parse/Validation Error:`, parseError);
         console.error(`${logPrefix} Raw Response Text (First 1000 chars):`, textResponse.substring(0, 1000));
-        throw new Error("Veri analizi tamamlanamadı. Model çıktısı bozuk. Lütfen görseli kırparak veya daha net çekerek tekrar deneyin.");
+        throw new Error("Yapay zeka çıktısı işlenemedi. Genellikle görselin net olmaması buna neden olur. Lütfen fotoğrafı daha net çekip tekrar deneyin.");
     }
 
   } catch (error: any) {
@@ -233,78 +248,132 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
     
     console.error(`${logPrefix} ---------------- CRITICAL API ERROR ----------------`);
     
-    // 1. Log Raw Error Object
-    console.error(`${logPrefix} Raw Error Object:`, error);
-
-    // 2. DETAILED SERIALIZATION (Captures hidden properties)
-    try {
-        const errorObj = error || {};
-        const fullErrorString = JSON.stringify(error, Object.getOwnPropertyNames(errorObj), 2);
-        console.error(`${logPrefix} FULL ERROR DETAILS (JSON):`, fullErrorString);
-    } catch (stringifyError) {
-        console.error(`${logPrefix} Could not stringify error object (likely circular):`, stringifyError);
-    }
-
-    // 3. Explicit SDK Error Fields Check
-    if (typeof error === 'object' && error !== null) {
-        if (error.response) console.error(`${logPrefix} Error Response Data:`, JSON.stringify(error.response, null, 2));
-        if (error.body) console.error(`${logPrefix} Error Body Data:`, JSON.stringify(error.body, null, 2));
-        if (error.errorDetails) console.error(`${logPrefix} Error Details:`, JSON.stringify(error.errorDetails, null, 2));
-    }
-
     // Extract standard HTTP error fields
     const status = error.status || error.response?.status;
-    const statusText = error.statusText || error.response?.statusText;
+    const msg = error.message || "";
     
-    console.error(`${logPrefix} Status:`, status, statusText);
-    console.error(`${logPrefix} Message:`, error.message);
+    // Log details
+    console.error(`${logPrefix} Status:`, status);
+    console.error(`${logPrefix} Message:`, msg);
     
-    // --- CUSTOMIZED ERROR MESSAGES FOR UI ---
+    // --- CUSTOMIZED USER-FRIENDLY ERROR MESSAGES ---
     let userMessage = "Analiz sırasında beklenmeyen bir teknik hata oluştu.";
 
     // 400 Bad Request
-    if (status === 400 || (error.message && error.message.includes("400"))) {
-        if (error.message?.includes("Image") || error.message?.includes("decode") || error.message?.includes("payload")) {
-            userMessage = "Yüklenen görsel işlenemedi. Dosya bozuk olabilir veya formatı desteklenmiyor. Lütfen net bir JPG/PNG yükleyin (Max 20MB).";
-        } else if (error.message?.includes("INVALID_ARGUMENT")) {
-             userMessage = "Gönderilen veri formatı geçersiz. Sayfayı yenileyip tekrar denemenizi öneririz.";
+    if (status === 400 || msg.includes("400") || msg.includes("INVALID_ARGUMENT")) {
+        if (msg.includes("Image") || msg.includes("media") || msg.includes("decode")) {
+            userMessage = "Yüklenen görsel formatı geçersiz veya dosya bozuk. Lütfen standart JPG/PNG formatında, net bir fotoğraf yükleyin.";
+        } else if (msg.includes("API key")) {
+            userMessage = "API Anahtarı yapılandırmasında hata var.";
         } else {
-            userMessage = "İstek geçersiz (400). Görsel boyutu çok yüksek veya okunamaz durumda olabilir.";
+            userMessage = "İstek geçersiz (400). Görsel içeriği model tarafından işlenemedi.";
         }
     } 
     // 401 Unauthorized
-    else if (status === 401 || (error.message && error.message.includes("401"))) {
-        userMessage = "Yetkilendirme Hatası: API Anahtarı geçersiz veya süresi dolmuş.";
+    else if (status === 401 || msg.includes("401")) {
+        userMessage = "Yetkilendirme Hatası: API Anahtarı geçersiz veya süresi dolmuş. Lütfen sistem yöneticisi ile iletişime geçin.";
     } 
     // 403 Forbidden
-    else if (status === 403 || (error.message && error.message.includes("403"))) {
-         userMessage = "Erişim Reddedildi: API anahtarının bu işlem için yetkisi yok veya fatura hesabı aktif değil.";
+    else if (status === 403 || msg.includes("403")) {
+         userMessage = "Erişim Engellendi: Bu API anahtarının bu işlem için yetkisi yok veya fatura hesabı aktif değil (Quota sorunu olabilir).";
+    }
+    // 413 Payload Too Large
+    else if (status === 413 || msg.includes("413")) {
+        userMessage = "Dosya boyutu çok büyük. Lütfen 4MB'dan küçük bir görsel yüklemeyi deneyin.";
     }
     // 429 Too Many Requests
-    else if (status === 429 || (error.message && error.message.includes("429"))) {
-        userMessage = "Sistem şu an çok yoğun veya kota sınırına ulaşıldı. Lütfen 1 dakika bekleyip tekrar deneyin.";
+    else if (status === 429 || msg.includes("429") || msg.includes("Quota")) {
+        userMessage = "Sistem şu an çok yoğun veya kota sınırına ulaşıldı. Lütfen 1-2 dakika bekleyip tekrar deneyin.";
     } 
     // 500 Internal Server Error
-    else if (status === 500 || (error.message && error.message.includes("500"))) {
+    else if (status === 500 || msg.includes("500")) {
          userMessage = "Sunucu Hatası (500): Google AI servisinde geçici bir sorun var. Lütfen daha sonra tekrar deneyin.";
     } 
-    // 503 Service Unavailable / 504 Gateway Timeout
-    else if (status === 503 || status === 504 || (error.message && (error.message.includes("503") || error.message.includes("504")))) {
-         userMessage = "Hizmet Kullanılamıyor: Servis şu an cevap veremiyor veya zaman aşımına uğradı. İnternet bağlantınızı kontrol edip tekrar deneyin.";
+    // 503/504 Service Unavailable / Timeout
+    else if (status === 503 || status === 504 || msg.includes("503") || msg.includes("504") || msg.includes("overloaded")) {
+         userMessage = "AI Servisi şu an cevap veremiyor (Aşırı Yüklenme). İnternet bağlantınızı kontrol edip 30 saniye sonra tekrar deneyin.";
     }
-    // Specific Gemini Safety/Finish Errors treated as thrown errors
-    else if (error.message && error.message.includes("SAFETY")) {
-         userMessage = "İçerik Güvenliği: Yüklenen görsel, güvenlik filtrelerine takıldı. Lütfen sadece eğitim materyali içerdiğinden emin olun.";
+    // Safety / Content Policy
+    else if (msg.includes("SAFETY") || msg.includes("blocked")) {
+         userMessage = "İçerik Güvenliği: Yüklenen görsel, güvenlik filtrelerine takıldı. Sınav kağıdının net ve uygun olduğundan emin olun.";
     }
-    // Catch-all for other text errors
-    else if (error.message) {
-        // If it looks like a raw JSON object string, keep generic
-        if (!error.message.trim().startsWith('{')) {
-             userMessage = `Hata: ${error.message}`;
+    // Client Side Errors
+    else if (msg.includes("NetworkError") || msg.includes("fetch")) {
+        userMessage = "İnternet bağlantısı hatası. Lütfen ağ bağlantınızı kontrol edin.";
+    }
+    else if (msg) {
+        // Fallback: If it's a simple string message, show it. If it's a JSON string, try to parse or hide it.
+        if (!msg.trim().startsWith('{')) {
+             userMessage = `${msg}`;
         }
     }
 
     console.error(`${logPrefix} Final User Message:`, userMessage);
     throw new Error(userMessage);
+  }
+};
+
+/**
+ * Chat with Coach implementation
+ * Uses the analyzed data to contextually chat with the student.
+ */
+export const chatWithCoach = async (
+  currentMessage: string,
+  history: ChatMessage[],
+  analysisData: ComprehensiveAnalysis
+): Promise<string> => {
+  try {
+    const ai = getClient();
+    const studentName = analysisData.ogrenci_bilgi?.ad_soyad?.split(' ')[0] || "Öğrenci";
+    
+    // System instruction for the coach persona
+    const systemInstruction = `
+GÖREV TANIMI:
+Sen **"Kukul AI"**, Türkiye'nin en sevilen, en samimi ve veri odaklı LGS Eğitim Koçusun.
+Karşında bir öğrenci var ve senin amacın; elindeki analiz verilerini kullanarak ona rehberlik etmek, sorularını yanıtlamak ve motivasyonunu yükseltmek.
+
+---
+
+ELİNDEKİ VERİLER (ÖĞRENCİ ANALİZİ):
+${JSON.stringify(analysisData)}
+
+---
+
+İLETİŞİM KURALLARI (BUNLARA KESİN UY):
+1.  **KİMLİK:** Adın Kukul AI. Robot gibi konuşma. "Ben bir yapay zekayım" deme. "Senin koçunum, yol arkadaşınım" de.
+2.  **HİTABET:** Öğrenciye ismiyle hitap et (İsim: ${studentName}). "Sen" dili kullan. Samimi, enerjik ve abla/abi sıcaklığında ol. Bolca emoji kullan (🚀, 💪, ✨, 🎯).
+3.  **VERİ ODAKLI CEVAP:** Asla genel geçer konuşma.
+    * Öğrenci "Matematiğim nasıl?" derse, JSON'daki matematik netine ve konu eksiklerine bakarak cevap ver.
+    * Örn: "Matematik genel olarak iyi ama 'Üslü İfadeler' konusunda 2 yanlışın var, orayı tamir edersek netlerin uçar!"
+4.  **KAPSAYICILIK:** Sadece eksikleri söyleme. Başarılı olduğu dersleri de öv. "Türkçe'de harikasın, paragrafları silip süpürmüşsün!" gibi.
+5.  **KISALIK:** Sohbet ediyoruz, makale yazmıyoruz. Cevapların kısa, net ve okunabilir (paragraflı) olsun.
+6.  **HAREKETE GEÇİR:** Öğrenciye her cevabının sonunda harekete geçirici küçük bir soru sor. (Örn: "Hemen 10 soru çözelim mi?")
+
+SENARYOLAR VE TEPKİLER:
+* **Motivasyon İsterse:** "Yapamayacağım" derse, geçmiş sınavlarındaki yükselişini veya güçlü olduğu bir dersi örnek göstererek onu ayağa kaldır.
+* **Plan İsterse:** "Bugün ne yapayım?" derse, konu analizindeki en zayıf konusunu ve en güçlü dersinden bir tekrar öner.
+* **Sohbet Ederse:** "Nasılsın?" derse, "Senin analiz sonuçlarını görünce harika oldum! Çalışmaya hazır mısın?" de.
+`;
+
+    // Map history to GoogleGenAI format
+    const formattedHistory = history.map(msg => ({
+      role: msg.role,
+      parts: [{ text: msg.text }]
+    }));
+
+    // Create chat session with system instruction
+    const chat = ai.chats.create({
+      model: AppConfig.gemini.modelName,
+      config: {
+        systemInstruction: systemInstruction,
+      },
+      history: formattedHistory
+    });
+
+    const result = await chat.sendMessage({ message: currentMessage });
+    return result.text || "Cevap alınamadı.";
+  } catch (error) {
+    console.error("Chat error:", error);
+    throw new Error("Koç ile bağlantı kurulurken bir sorun oluştu.");
   }
 };
