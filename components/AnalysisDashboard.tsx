@@ -376,6 +376,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
               const uniqueKey = `${dateKey}_${nameKey}_${scoreKey}`;
 
               if (!uniqueExamsMap.has(uniqueKey)) {
+                  let examTotalNet = 0;
                   const row: any = {
                     date: exam.tarih ? exam.tarih : new Date(analysis.savedAt || Date.now()).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }),
                     fullDate: exam.tarih ? new Date(exam.tarih).getTime() : (analysis.savedAt || Date.now()),
@@ -394,9 +395,11 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                       if(d && d.ders) {
                           const config = getLessonConfig(d.ders);
                           row[config.label] = d.net; 
+                          examTotalNet += d.net || 0;
                       }
                   });
                   
+                  row.totalNet = examTotalNet;
                   uniqueExamsMap.set(uniqueKey, row);
               }
           });
@@ -422,6 +425,19 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
     const total = validExams.reduce((sum, exam) => sum + Number(exam.totalScore), 0);
     
     // 3. Return exact arithmetic mean
+    return total / validExams.length;
+  }, [globalTrendData]);
+
+  // --- NEW: AVERAGE NET CALCULATION ---
+  const averageNet = useMemo(() => {
+    const validExams = globalTrendData.filter(e => {
+        const score = Number(e.totalScore);
+        return typeof score === 'number' && !isNaN(score) && isFinite(score) && score > 0;
+    });
+    
+    if (validExams.length === 0) return 0;
+    
+    const total = validExams.reduce((sum, exam) => sum + Number(exam.totalNet || 0), 0);
     return total / validExams.length;
   }, [globalTrendData]);
 
@@ -534,6 +550,11 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
         ? validExams[validExams.length - 1] 
         : activeData.exams_history[activeData.exams_history.length - 1];
   }, [activeData]);
+
+  const lastExamNet = useMemo(() => {
+    if (!lastExam) return 0;
+    return (lastExam.ders_netleri || []).reduce((sum, d) => sum + (d.net || 0), 0);
+  }, [lastExam]);
     
   // Scores for display - UPDATED with formatLGSScore logic
   const currentScoreDisplay = useMemo(() => {
@@ -543,6 +564,14 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
         return lastExam?.toplam_puan ? formatLGSScore(lastExam.toplam_puan) : "-";
     }
   }, [viewScope, averageScore, lastExam]);
+
+  const currentNetDisplay = useMemo(() => {
+      if (viewScope === 'all') {
+          return averageNet > 0 ? averageNet.toFixed(2) : "-";
+      } else {
+          return lastExamNet ? lastExamNet.toFixed(2) : "-";
+      }
+  }, [viewScope, averageNet, lastExamNet]);
 
   // Dynamic colors
   const currentLessonTheme = selectedLessonForTopic === 'Genel' 
@@ -714,6 +743,15 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                 </p>
                 <p className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white tracking-tight">
                     {currentScoreDisplay}
+                </p>
+             </div>
+             <div className="hidden md:block w-px h-10 bg-slate-200 dark:bg-slate-700"></div>
+             <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                    {viewScope === 'all' ? 'Mevcut Ortalama Net' : 'Bu Sınav Neti'}
+                </p>
+                <p className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white tracking-tight">
+                    {currentNetDisplay}
                 </p>
              </div>
              <div className="ml-auto">
