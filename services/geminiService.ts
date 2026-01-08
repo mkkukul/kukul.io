@@ -92,7 +92,7 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
             executive_summary: {
                 type: Type.OBJECT, 
                 properties: {
-                    mevcut_durum: { type: Type.STRING, description: "HTML etiketli, her dersin (Mat, Fen, Tr, İnk, İng, Din) ayrı paragrafta değerlendirildiği detaylı analiz metni. KURALLAR: 1. Ders isimlerini MUTLAKA şu HTML ile sarmala: <span class='text-blue-300 font-bold'>Matematik</span>, vb. (Prompttaki renkleri kullan). 2. Sandviç Tekniği kullan (Öv -> Eleştir -> Motive et)." },
+                    mevcut_durum: { type: Type.STRING, description: "Compact HTML string. 6 dersi (Mat, Fen, Tr, İnk, İng, Din) kısa paragraflarla analiz et. Ders isimlerini span class='text-blue-300 font-bold' vb. ile renklendir." },
                     guclu_yonler: { type: Type.ARRAY, items: { type: Type.STRING } },
                     zayif_yonler: { type: Type.ARRAY, items: { type: Type.STRING } },
                     lgs_tahmini_yuzdelik: { type: Type.NUMBER }
@@ -126,7 +126,7 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
             },
             konu_analizi: {
                 type: Type.ARRAY,
-                description: "OCR ile taranmış EKSİKSİZ konu listesi. Belgede kaç satır varsa o kadar obje olmalı. Asla özetleme.",
+                description: "OCR Veri Motoru çıktısı. Belgedeki TÜM SATIRLARI eksiksiz içerir. Sütun sütun taranmış, birebir kopya.",
                 items: {
                     type: Type.OBJECT,
                     properties: {
@@ -144,7 +144,7 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
             },
             calisma_plani: {
                 type: Type.ARRAY,
-                description: "Her ders için somut aksiyon planı.",
+                description: "Ders bazlı eksik giderme planı.",
                 items: {
                     type: Type.OBJECT,
                     properties: {
