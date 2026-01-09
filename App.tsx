@@ -211,7 +211,7 @@ const App: React.FC = () => {
                 <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight group-hover:text-brand-700 dark:group-hover:text-brand-400 transition-colors">
                     Kukul.io
                 </h1>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold tracking-widest uppercase">Stratejik Performans Koçluğu</p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold tracking-widest uppercase">Yapay Zeka Destekli LGS Platformu</p>
               </div>
             </div>
 
