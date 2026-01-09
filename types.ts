@@ -53,6 +53,7 @@ export interface ActionItem {
   sebep: string; // "Kronik eksik", "Dikkat hatası potansiyeli" vb.
   tavsiye: string; // "50 soru çöz", "Konu tekrarı yap"
   oncelik: 1 | 2 | 3;
+  onem_derecesi: number; // 1 ile 10 arasında görevin etki puanı
 }
 
 export interface ComprehensiveAnalysis {

@@ -1,4 +1,5 @@
 
+
 import { ComprehensiveAnalysis, ExamPerformance, TopicAnalysis, Simulation, ActionItem } from "../types";
 
 /**
@@ -172,7 +173,8 @@ export const validateAndSanitizeAnalysis = (raw: any): ComprehensiveAnalysis => 
             ders: safeString(item.ders, "Ders"),
             sebep: safeString(item.sebep, "Gelişim alanı."),
             tavsiye: safeString(item.tavsiye, "Tekrar yapın."),
-            oncelik: priority as 1 | 2 | 3
+            oncelik: priority as 1 | 2 | 3,
+            onem_derecesi: safeNumber(item.onem_derecesi, 5, 1, 10) // 1-10 range, default 5
         };
     });
 

@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { SYSTEM_PROMPT } from "../constants";
 import { ComprehensiveAnalysis, ChatMessage } from "../types";
@@ -11,20 +10,6 @@ const getClient = () => {
     return new GoogleGenAI({ apiKey: AppConfig.gemini.apiKey });
 };
 
-// --- PERFORMANCE OPTIMIZATION: IN-MEMORY CACHE ---
-// Stores the last 5 analysis results to prevent redundant API calls for the same file set.
-const analysisCache = new Map<string, ComprehensiveAnalysis>();
-const MAX_CACHE_SIZE = 5;
-
-const generateCacheKey = (base64DataUrls: string[]): string => {
-    // Create a lightweight fingerprint based on file count, first file content snippet, and total length.
-    // This avoids hashing the entire heavy base64 strings.
-    if (base64DataUrls.length === 0) return "empty";
-    const totalLength = base64DataUrls.reduce((acc, curr) => acc + curr.length, 0);
-    const firstSnippet = base64DataUrls[0].substring(0, 30);
-    return `${base64DataUrls.length}_${firstSnippet}_${totalLength}`;
-};
-
 export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<ComprehensiveAnalysis> => {
   const logPrefix = "[GeminiService]";
   
@@ -35,18 +20,23 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
     console.group(`${logPrefix} Starting Analysis`);
     console.log(`Files to process: ${base64DataUrls.length}`);
 
-    // --- 0. Check Cache ---
-    const cacheKey = generateCacheKey(base64DataUrls);
-    if (analysisCache.has(cacheKey)) {
-        console.log(`${logPrefix} ⚡ Cache Hit! Returning stored result.`);
-        console.groupEnd();
-        return analysisCache.get(cacheKey)!;
-    }
-
     // --- 1. Pre-flight Validation & Logging ---
-    // (Reduced detailed logging for performance, only basic stats)
-    const totalSizeMB = base64DataUrls.reduce((acc, url) => acc + url.length, 0) / 1024 / 1024 * 0.75;
-    console.log(`${logPrefix} Total Payload Approx: ${totalSizeMB.toFixed(2)} MB`);
+    const debugFileStats = base64DataUrls.map((url, index) => {
+        const mimeMatch = url.match(/^data:(.+?);base64,/);
+        const mimeType = mimeMatch ? mimeMatch[1] : 'unknown';
+        const dataLength = url.length;
+        const sizeInKB = Math.round((dataLength * 3) / 4 / 1024); // approx base64 size
+
+        return {
+            fileIndex: index + 1,
+            mimeType,
+            sizeKB: `${sizeInKB} KB`,
+            isValidFormat: !!mimeMatch,
+            dataPreview: url.substring(0, 50) + "..."
+        };
+    });
+
+    console.table(debugFileStats);
 
     // Add all images/PDFs to the prompt parts
     for (const [index, base64Url] of base64DataUrls.entries()) {
@@ -59,25 +49,14 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
                 }
             });
         } else {
+            console.error(`${logPrefix} File at index ${index} has invalid base64 format.`);
             throw new Error(`Dosya #${index + 1} formatı hatalı. Lütfen tekrar yükleyin.`);
         }
     }
 
     if (parts.length === 0) {
-        throw new Error("Geçerli dosya verisi bulunamadı.");
+        throw new Error("Geçerli dosya verisi bulunamadı. Lütfen yüklediğiniz dosyaların formatını kontrol edin.");
     }
-
-    // Add specific instruction for robust data extraction
-    parts.push({ text: `
-    GÖREV: Yüklenen sınav sonuç belgelerini ve konu analizi tablolarını analiz et.
-    
-    ÖNEMLİ YÖNERGELER:
-    1. Görsellerdeki "Konu Analizi" veya "Ders Başarısı" tablolarını satır satır tara.
-    2. Konu isimlerini doğru oku. Eğer görselde "Fiilimsiler-1", "Fiilimsiler-2" gibi parçalı satırlar varsa, bunları "Fiilimsiler" başlığı altında BİRLEŞTİR ve sayılarını topla.
-    3. Tablodaki sayısal verileri (Doğru, Yanlış, Boş) değiştirmeden ve yuvarlamadan aktar.
-    4. Görselde OLMAYAN hiçbir konuyu veya puanı uydurma.
-    5. Öğrenci adını, şubesini ve sınav adını belgenin başlık kısımlarından bul.
-    `});
 
     // Add system prompt at the end
     parts.push({ text: SYSTEM_PROMPT });
@@ -92,8 +71,11 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
         parts: parts
       },
       config: {
+        // Temperature 0 ensures the model is deterministic (stable) on the same input.
         temperature: AppConfig.gemini.generationConfig.temperature,
+        // Increase maxOutputTokens to accommodate large JSON responses.
         maxOutputTokens: AppConfig.gemini.generationConfig.maxOutputTokens,
+        // High thinking budget for complex analysis
         thinkingConfig: { thinkingBudget: AppConfig.gemini.generationConfig.thinkingBudget }, 
         responseMimeType: "application/json",
         responseSchema: {
@@ -111,7 +93,7 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
             executive_summary: {
                 type: Type.OBJECT, 
                 properties: {
-                    mevcut_durum: { type: Type.STRING },
+                    mevcut_durum: { type: Type.STRING, description: "HTML etiketli string. Öğrenciye 'Sen' diye hitap eden, koçluk diliyle yazılmış, motivasyon dolu analiz. 6 dersi (Mat, Fen, Tr, İnk, İng, Din) ayrı paragraflarda ele al. Ders adlarını <span class='text-blue-500 font-bold'>Matematik</span> vb. ile renklendir." },
                     guclu_yonler: { type: Type.ARRAY, items: { type: Type.STRING } },
                     zayif_yonler: { type: Type.ARRAY, items: { type: Type.STRING } },
                     lgs_tahmini_yuzdelik: { type: Type.NUMBER }
@@ -120,6 +102,7 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
             },
             exams_history: {
                 type: Type.ARRAY,
+                description: "Belgedeki 'Sınav Listesi' veya 'Geçmiş Sınavlar' tablosunu bul. Sadece son sınavı değil, tablodaki TÜM GEÇMİŞ SINAVLARI satır satır buraya ekle. Ortalama hesabı için kritiktir.",
                 items: {
                     type: Type.OBJECT,
                     properties: {
@@ -130,6 +113,7 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
                         genel_yuzdelik: { type: Type.NUMBER },
                         ders_netleri: { 
                            type: Type.ARRAY, 
+                           description: "Bu sınav satırında yer alan ders netleri.",
                            items: { 
                              type: Type.OBJECT,
                              properties: {
@@ -145,23 +129,25 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
             },
             konu_analizi: {
                 type: Type.ARRAY,
+                description: "OCR Veri Motoru çıktısı. Belgedeki TÜM konu satırlarını eksiksiz içerir. İki sütunlu tabloları atlamadan, satır satır tara. Özetleme yapma.",
                 items: {
                     type: Type.OBJECT,
                     properties: {
                         ders: { type: Type.STRING },
-                        konu: { type: Type.STRING },
+                        konu: { type: Type.STRING, description: "Belgedeki satırda yazan tam konu adı." },
                         dogru: { type: Type.NUMBER },
                         yanlis: { type: Type.NUMBER },
                         bos: { type: Type.NUMBER },
                         basari_yuzdesi: { type: Type.NUMBER },
                         lgs_kayip_puan: { type: Type.NUMBER },
-                        durum: { type: Type.STRING }
+                        durum: { type: Type.STRING, description: "Kritik (<%50), Geliştirilmeli (%50-%70), İyi (%70-%80), Mükemmel (>%80)" }
                     },
                     required: ["ders", "konu", "lgs_kayip_puan", "durum"]
                 }
             },
             calisma_plani: {
                 type: Type.ARRAY,
+                description: "Her ders için (Mat, Fen, Tr, İnk, İng, Din) 5'er adet, toplam 30 adet görev içeren plan.",
                 items: {
                     type: Type.OBJECT,
                     properties: {
@@ -169,21 +155,30 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
                         ders: { type: Type.STRING },
                         sebep: { type: Type.STRING },
                         tavsiye: { type: Type.STRING },
-                        oncelik: { type: Type.NUMBER }
+                        oncelik: { type: Type.NUMBER },
+                        onem_derecesi: { type: Type.NUMBER, description: "Görevin etki puanı (1-10)" }
                     },
-                    required: ["konu", "tavsiye", "oncelik", "sebep"]
+                    required: ["konu", "tavsiye", "oncelik", "sebep", "onem_derecesi"]
                 }
             },
             simulasyon: {
                 type: Type.OBJECT,
+                description: "Konu analizi (zayıf konular) ve çalışma planındaki öneriler baz alınarak oluşturulan, öğrencinin potansiyel gelişim simülasyonu.",
                 properties: {
-                    senaryo: { type: Type.STRING },
+                    senaryo: { type: Type.STRING, description: "Öğrencinin mevcut durumundan hareketle, çalışma planına uyarsa nasıl bir başarı elde edeceğini anlatan motive edici senaryo." },
                     hedef_yuzdelik: { type: Type.NUMBER },
-                    hedef_puan: { type: Type.NUMBER },
+                    hedef_puan: { 
+                        type: Type.NUMBER, 
+                        description: "HESAPLAMA: (Mevcut Puan) + (Konu Analizindeki Toplam 'lgs_kayip_puan' * 0.60). Bu formülü uygulayarak gerçekçi ve ulaşılabilir bir hedef puan belirle." 
+                    },
                     puan_araligi: { type: Type.STRING },
-                    gerekli_net_artisi: { type: Type.STRING },
+                    gerekli_net_artisi: { 
+                        type: Type.STRING, 
+                        description: "STRATEJİ: Konu analizinde en çok yanlış/boş yapılan dersleri belirle. Hedef puana ulaşmak için bu derslerden toplam kaç net arttırması gerektiğini yaz. Örn: 'Matematik: +4 Net (Üslü Sayılar), Fen: +3 Net'." 
+                    },
                     gelisim_adimlari: {
                         type: Type.ARRAY,
+                        description: "Çalışma planındaki öncelikli konularla uyumlu, somut gelişim adımları.",
                         items: {
                             type: Type.OBJECT,
                             properties: {
@@ -211,74 +206,124 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
     // --- 3. Safety & Response Validation ---
     if (response.candidates && response.candidates.length > 0) {
         const candidate = response.candidates[0];
+        
+        // Handle specific finish reasons
         if (candidate.finishReason !== "STOP") {
             console.warn(`${logPrefix} Abnormal finish reason: ${candidate.finishReason}`);
-            if (candidate.finishReason === "SAFETY") throw new Error("Görsel içerik güvenlik filtrelerine takıldı.");
-            if (candidate.finishReason === "MAX_TOKENS") throw new Error("Analiz sonucu çok uzun olduğu için kesildi.");
-            if (candidate.finishReason === "RECITATION") throw new Error("Telif hakkı koruması veya ezberlenmiş içerik tespit edildi.");
+            
+            if (candidate.finishReason === "SAFETY") {
+                console.error(`${logPrefix} Safety Ratings:`, candidate.safetyRatings);
+                throw new Error("Görsel içerik güvenlik filtrelerine takıldı (Şiddet, Nefret söylemi vb.). Lütfen sadece eğitim materyali içerdiğinden emin olun.");
+            }
+            if (candidate.finishReason === "MAX_TOKENS") {
+                console.error(`${logPrefix} Output truncated due to MAX_TOKENS.`);
+                throw new Error("Analiz sonucu çok uzun olduğu için kesildi. Lütfen daha az sayıda sayfa yüklemeyi deneyin.");
+            }
+            if (candidate.finishReason === "RECITATION") {
+                throw new Error("Model, içerikteki metnin telif hakkı veya ezberlenmiş içerik korumasına takıldığını tespit etti. Lütfen farklı bir görsel deneyin.");
+            }
+            if (candidate.finishReason === "OTHER") {
+                throw new Error("Analiz işlemi teknik bir nedenden dolayı tamamlanamadı. Lütfen tekrar deneyin.");
+            }
         }
     }
 
     const textResponse = response.text;
     if (!textResponse) {
-      throw new Error("Model boş yanıt döndürdü. Görsel bulanık olabilir.");
+      console.error(`${logPrefix} Empty text response. Full Response Object:`, JSON.stringify(response, null, 2));
+      throw new Error("Model boş yanıt döndürdü. Görsel bulanık olabilir veya metin içerip içermediğini kontrol edin.");
     }
 
-    // --- 4. Robust JSON Parsing (Optimization) ---
-    // Instead of simple regex replace which can fail if model chats before JSON,
-    // we extract the specific JSON block.
-    let cleanJson = textResponse;
-    const firstBrace = textResponse.indexOf('{');
-    const lastBrace = textResponse.lastIndexOf('}');
+    const cleanJson = textResponse.replace(/```json|```/g, '').trim();
 
-    if (firstBrace !== -1 && lastBrace !== -1) {
-        // Extract substring - Faster and safer than global regex on large strings
-        cleanJson = textResponse.substring(firstBrace, lastBrace + 1);
-    } else {
-        // Fallback
-        cleanJson = textResponse.replace(/```json|```/g, '').trim();
-    }
-
+    // --- 4. JSON Parsing & Validating ---
     try {
         const rawResult = JSON.parse(cleanJson);
+        
+        // Pass through the validation service to ensure data integrity and type safety
         const validatedResult = validateAndSanitizeAnalysis(rawResult);
         
-        // --- 5. Cache Result ---
-        if (analysisCache.size >= MAX_CACHE_SIZE) {
-            const firstKey = analysisCache.keys().next().value;
-            if (firstKey) analysisCache.delete(firstKey);
-        }
-        analysisCache.set(cacheKey, validatedResult);
-
         console.groupEnd();
         return validatedResult;
     } catch (parseError) {
-        console.error(`${logPrefix} JSON Parse Error. Raw start: ${cleanJson.substring(0, 50)}...`);
-        throw new Error("Yapay zeka çıktısı işlenemedi. Lütfen görseli daha net çekip tekrar deneyin.");
+        console.error(`${logPrefix} JSON Parse/Validation Error:`, parseError);
+        console.error(`${logPrefix} Raw Response Text (First 1000 chars):`, textResponse.substring(0, 1000));
+        throw new Error("Yapay zeka çıktısı işlenemedi. Genellikle görselin net olmaması buna neden olur. Lütfen fotoğrafı daha net çekip tekrar deneyin.");
     }
 
   } catch (error: any) {
     console.groupEnd();
-    console.error(`${logPrefix} Error details:`, error.message);
     
+    console.error(`${logPrefix} ---------------- CRITICAL API ERROR ----------------`);
+    
+    // Extract standard HTTP error fields
     const status = error.status || error.response?.status;
     const msg = error.message || "";
+    
+    // Log details
+    console.error(`${logPrefix} Status:`, status);
+    console.error(`${logPrefix} Message:`, msg);
+    
+    // --- CUSTOMIZED USER-FRIENDLY ERROR MESSAGES ---
     let userMessage = "Analiz sırasında beklenmeyen bir teknik hata oluştu.";
 
-    if (status === 400 || msg.includes("INVALID_ARGUMENT")) userMessage = "Görsel formatı geçersiz veya işlenemedi.";
-    else if (status === 401) userMessage = "API Anahtarı hatası.";
-    else if (status === 429 || msg.includes("Quota")) userMessage = "Sistem yoğun, lütfen biraz bekleyin.";
-    else if (status === 503 || msg.includes("overloaded")) userMessage = "AI Servisi aşırı yoğun, lütfen tekrar deneyin.";
+    // 400 Bad Request
+    if (status === 400 || msg.includes("400") || msg.includes("INVALID_ARGUMENT")) {
+        if (msg.includes("Image") || msg.includes("media") || msg.includes("decode")) {
+            userMessage = "Yüklenen görsel formatı geçersiz veya dosya bozuk. Lütfen standart JPG/PNG formatında, net bir fotoğraf yükleyin.";
+        } else if (msg.includes("API key")) {
+            userMessage = "API Anahtarı yapılandırmasında hata var.";
+        } else {
+            userMessage = "İstek geçersiz (400). Görsel içeriği model tarafından işlenemedi.";
+        }
+    } 
+    // 401 Unauthorized
+    else if (status === 401 || msg.includes("401")) {
+        userMessage = "Yetkilendirme Hatası: API Anahtarı geçersiz veya süresi dolmuş. Lütfen sistem yöneticisi ile iletişime geçin.";
+    } 
+    // 403 Forbidden
+    else if (status === 403 || msg.includes("403")) {
+         userMessage = "Erişim Engellendi: Bu API anahtarının bu işlem için yetkisi yok veya fatura hesabı aktif değil (Quota sorunu olabilir).";
+    }
+    // 413 Payload Too Large
+    else if (status === 413 || msg.includes("413")) {
+        userMessage = "Dosya boyutu çok büyük. Lütfen 4MB'dan küçük bir görsel yüklemeyi deneyin.";
+    }
+    // 429 Too Many Requests
+    else if (status === 429 || msg.includes("429") || msg.includes("Quota")) {
+        userMessage = "Sistem şu an çok yoğun veya kota sınırına ulaşıldı. Lütfen 1-2 dakika bekleyip tekrar deneyin.";
+    } 
+    // 500 Internal Server Error
+    else if (status === 500 || msg.includes("500")) {
+         userMessage = "Sunucu Hatası (500): Google AI servisinde geçici bir sorun var. Lütfen daha sonra tekrar deneyin.";
+    } 
+    // 503/504 Service Unavailable / Timeout
+    else if (status === 503 || status === 504 || msg.includes("503") || msg.includes("504") || msg.includes("overloaded")) {
+         userMessage = "AI Servisi şu an cevap veremiyor (Aşırı Yüklenme). İnternet bağlantınızı kontrol edip 30 saniye sonra tekrar deneyin.";
+    }
+    // Safety / Content Policy
+    else if (msg.includes("SAFETY") || msg.includes("blocked")) {
+         userMessage = "İçerik Güvenliği: Yüklenen görsel, güvenlik filtrelerine takıldı. Sınav kağıdının net ve uygun olduğundan emin olun.";
+    }
+    // Client Side Errors
+    else if (msg.includes("NetworkError") || msg.includes("fetch")) {
+        userMessage = "İnternet bağlantısı hatası. Lütfen ağ bağlantınızı kontrol edin.";
+    }
     else if (msg) {
-        if (!msg.trim().startsWith('{')) userMessage = `${msg}`;
+        // Fallback: If it's a simple string message, show it. If it's a JSON string, try to parse or hide it.
+        if (!msg.trim().startsWith('{')) {
+             userMessage = `${msg}`;
+        }
     }
 
+    console.error(`${logPrefix} Final User Message:`, userMessage);
     throw new Error(userMessage);
   }
 };
 
 /**
  * Chat with Coach implementation
+ * Uses the analyzed data to contextually chat with the student.
  */
 export const chatWithCoach = async (
   currentMessage: string,
@@ -289,28 +334,51 @@ export const chatWithCoach = async (
     const ai = getClient();
     const studentName = analysisData.ogrenci_bilgi?.ad_soyad?.split(' ')[0] || "Öğrenci";
     
+    // System instruction for the coach persona
     const systemInstruction = `
 GÖREV TANIMI:
 Sen **"Kukul AI"**, Türkiye'nin en sevilen, en samimi ve veri odaklı LGS Eğitim Koçusun.
-Karşında bir öğrenci var ve senin amacın; elindeki analiz verilerini kullanarak ona rehberlik etmek.
+Karşında bir öğrenci var ve senin amacın; elindeki analiz verilerini kullanarak ona rehberlik etmek, sorularını yanıtlamak ve motivasyonunu yükseltmek.
 
 ---
+
 ELİNDEKİ VERİLER (ÖĞRENCİ ANALİZİ):
-${JSON.stringify(analysisData).substring(0, 15000)} // Truncate to save context tokens if too large
+${JSON.stringify(analysisData)}
+
 ---
 
-KURALLAR:
-1. Adın Kukul AI. "Senin koçunum" de.
-2. Öğrenciye ismiyle hitap et (İsim: ${studentName}). Samimi ol, emoji kullan (🚀, 💪).
-3. Verilere atıfta bulun.
-4. Cevapların kısa ve okunabilir olsun.
+ÖZEL KOMUT:
+Eğer öğrenci "Detaylı karne raporumu yaz", "Analiz et", "Durumum nedir" gibi bir şey derse veya sohbete ilk başladığında analiz isterse;
+ONA ŞU ŞABLONU KULLANARAK CEVAP VER (Birebir bu başlıkları kullan ve altlarını doldur):
+
+### 🏁 1. GENEL BAKIŞ
+(Burada puanını, yüzdeliğini ve genel gidişatını 1-2 cümleyle özetle. İyi bir liseye gidip gidemeyeceğini söyle).
+
+### 🚨 2. KIRMIZI ALARM (ACİL)
+(En kötü olduğu dersi ve o derste en çok yanlış yaptığı konuyu söyle. Örn: "Matematik - Üslü Sayılar").
+
+### ✨ 3. YILDIZLI DERSLER
+(En iyi olduğu dersleri öv. Örn: "Türkçe ve Fen derslerinde harikasın!").
+
+### 🗺️ 4. SANA ÖZEL REÇETE
+(Ona hemen yapması gereken 3 tane madde ver. Örn: "1. Üslü sayılardan 50 soru çöz. 2. Türkçe paragraf çözmeye devam et.").
+
+---
+
+İLETİŞİM KURALLARI (BUNLARA KESİN UY):
+1.  **KİMLİK:** Adın Kukul AI. Robot gibi konuşma. "Ben bir yapay zekayım" deme. "Senin koçunum, yol arkadaşınım" de.
+2.  **HİTABET:** Öğrenciye ismiyle hitap et (İsim: ${studentName}). "Sen" dili kullan. Samimi, enerjik ve abla/abi sıcaklığında ol. Bolca emoji kullan (🚀, 💪, ✨, 🎯).
+3.  **VERİ ODAKLI CEVAP:** Asla genel geçer konuşma. Verilere atıfta bulun.
+4.  **KISALIK:** Sohbet ediyoruz, makale yazmıyoruz. Cevapların kısa, net ve okunabilir (paragraflı) olsun.
 `;
 
+    // Map history to GoogleGenAI format
     const formattedHistory = history.map(msg => ({
       role: msg.role,
       parts: [{ text: msg.text }]
     }));
 
+    // Create chat session with system instruction
     const chat = ai.chats.create({
       model: AppConfig.gemini.modelName,
       config: {
@@ -323,6 +391,6 @@ KURALLAR:
     return result.text || "Cevap alınamadı.";
   } catch (error) {
     console.error("Chat error:", error);
-    throw new Error("Koç ile bağlantı kurulamadı.");
+    throw new Error("Koç ile bağlantı kurulurken bir sorun oluştu.");
   }
 };

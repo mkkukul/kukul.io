@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ComprehensiveAnalysis, TopicAnalysis, ChatMessage } from '../types';
 import { chatWithCoach } from '../services/geminiService';
@@ -15,7 +14,7 @@ import {
   ArrowUpDown, ArrowUp, ArrowDown, Calendar, History, Filter, Layers,
   LayoutGrid, Activity, Users, Star, Footprints, Clock, Rocket,
   CheckCircle, AlertCircle, HelpCircle, Trophy, ThumbsUp, Flame, Siren, Quote,
-  Download, Loader2, MessageCircle, Send, Bot
+  Download, Loader2, MessageCircle, Send, Bot, Zap
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -271,12 +270,9 @@ const aggregateAnalyses = (analyses: ComprehensiveAnalysis[]): ComprehensiveAnal
 };
 
 const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHistory }) => {
-  const [activeTab, setActiveTab] = useState<'ozet' | 'trend' | 'plan' | 'konu' | 'koc'>('ozet');
+  const [activeTab, setActiveTab] = useState<'ozet' | 'plan' | 'konu' | 'koc'>('koc');
   
-  // Trend Specific States
-  const [trendSubTab, setTrendSubTab] = useState<'all' | 'last3' | 'individual'>('all');
   const [selectedLessonForTopic, setSelectedLessonForTopic] = useState<string>('Genel');
-  const [selectedTrendLesson, setSelectedTrendLesson] = useState<string>('Tümü');
   
   // VIEW SCOPE: 'all' (Aggregate) or specific analysis ID
   const [viewScope, setViewScope] = useState<string>('all');
@@ -626,21 +622,6 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
         return { color: conf.color, fill: `${conf.color}33` };
     })();
 
-  const displayedTrendLessons = selectedTrendLesson === 'Tümü'
-      ? Object.entries(LESSON_CONFIG)
-      : Object.entries(LESSON_CONFIG).filter(([key, config]) => config.label === selectedTrendLesson);
-
-  const getTrendIcon = (data: any[], key: string) => {
-      if (!data || data.length < 2) return null;
-      const last = data[data.length - 1][key] || 0;
-      const prev = data[data.length - 2][key] || 0;
-      const diff = last - prev;
-      
-      if (diff > 0.5) return <span className="flex items-center text-emerald-600 dark:text-emerald-400 font-bold text-xs gap-1 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded"><ArrowUp className="w-3 h-3" /> +{diff.toFixed(1)}</span>;
-      if (diff < -0.5) return <span className="flex items-center text-red-600 dark:text-red-400 font-bold text-xs gap-1 bg-red-50 dark:bg-red-900/30 px-2 py-1 rounded"><ArrowDown className="w-3 h-3" /> {diff.toFixed(1)}</span>;
-      return <span className="text-slate-400 dark:text-slate-500 font-bold text-xs bg-slate-50 dark:bg-slate-700 px-2 py-1 rounded flex items-center gap-1"><ArrowRight className="w-3 h-3" /> Stabil</span>;
-  };
-
   // --- NEW: POTENTIAL & RECOVERABLE SCORE ANALYSIS ---
 
   // Calculate Potentials based on activeData
@@ -821,11 +802,10 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
       {/* Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-2 mb-6 no-scrollbar" data-html2canvas-ignore>
         {[
-          { id: 'ozet', label: 'Stratejik Performans', icon: Search },
           { id: 'koc', label: 'Kukul AI Koç', icon: MessageCircle },
+          { id: 'ozet', label: 'Stratejik Performans', icon: Search },
           { id: 'plan', label: 'Ders Bazlı Akıllı Strateji', icon: ListTodo },
           { id: 'konu', label: 'Konu Analizi', icon: BrainCircuit },
-          { id: 'trend', label: 'İlerleme Geçmişi', icon: History },
         ].map(tab => (
           <button
             key={tab.id}
@@ -844,7 +824,117 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
       {/* Content Area */}
       <div className="space-y-6">
         
-        {/* TAB 1: EXECUTIVE SUMMARY */}
+        {/* TAB 1: COACHING CHAT */}
+        {activeTab === 'koc' && (
+             <div className="animate-fade-in-up">
+                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Chat Window */}
+                    <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col h-[600px] overflow-hidden relative">
+                         {/* Header */}
+                         <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 flex items-center gap-3">
+                             <div className="bg-gradient-to-tr from-brand-500 to-indigo-500 p-2 rounded-xl text-white shadow-lg shadow-brand-500/20">
+                                 <Bot className="w-6 h-6" />
+                             </div>
+                             <div>
+                                 <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                     Kukul AI Koç
+                                     <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full uppercase font-bold tracking-wider">Online</span>
+                                 </h3>
+                                 <p className="text-xs text-slate-500 dark:text-slate-400">Verilerine dayalı kişisel eğitim danışmanın</p>
+                             </div>
+                         </div>
+                         
+                         {/* Messages Area */}
+                         <div className="flex-grow overflow-y-auto p-6 space-y-4 bg-slate-50/30 dark:bg-slate-900/30">
+                             {chatHistory.map((msg, idx) => (
+                                 <div key={idx} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                     <div className={`max-w-[85%] md:max-w-[75%] rounded-2xl p-4 text-sm leading-relaxed shadow-sm ${
+                                         msg.role === 'user' 
+                                            ? 'bg-brand-600 dark:bg-brand-600 text-white rounded-tr-none' 
+                                            : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-tl-none border border-slate-100 dark:border-slate-600'
+                                     }`}>
+                                         {msg.role === 'model' ? (
+                                             <FormattedText text={msg.text} textColor={msg.role === 'user' ? 'text-white' : undefined} />
+                                         ) : (
+                                             msg.text
+                                         )}
+                                     </div>
+                                 </div>
+                             ))}
+                             {isChatLoading && (
+                                 <div className="flex justify-start w-full">
+                                     <div className="bg-white dark:bg-slate-700 rounded-2xl rounded-tl-none p-4 border border-slate-100 dark:border-slate-600 flex items-center gap-2 shadow-sm">
+                                         <Loader2 className="w-4 h-4 text-brand-600 dark:text-brand-400 animate-spin" />
+                                         <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Kukul AI yazıyor...</span>
+                                     </div>
+                                 </div>
+                             )}
+                             <div ref={chatEndRef} />
+                         </div>
+
+                         {/* Input Area */}
+                         <div className="p-4 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700">
+                             <form onSubmit={handleSendMessage} className="flex gap-3">
+                                 <input 
+                                     type="text" 
+                                     value={chatInput}
+                                     onChange={(e) => setChatInput(e.target.value)}
+                                     placeholder="Merak ettiğin her şeyi sorabilirsin..."
+                                     className="flex-grow bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-all"
+                                     disabled={isChatLoading}
+                                 />
+                                 <button 
+                                     type="submit" 
+                                     disabled={!chatInput.trim() || isChatLoading}
+                                     className="bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-white p-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg shadow-brand-500/20"
+                                 >
+                                     <Send className="w-5 h-5" />
+                                 </button>
+                             </form>
+                         </div>
+                    </div>
+
+                    {/* Sidebar Suggestions */}
+                    <div className="bg-gradient-to-br from-indigo-900 to-brand-900 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden flex flex-col justify-between">
+                         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+                         
+                         <div className="relative z-10">
+                             <h4 className="font-bold text-lg mb-4 flex items-center gap-2">
+                                 <Lightbulb className="w-5 h-5 text-yellow-300" />
+                                 Neler Sorabilirsin?
+                             </h4>
+                             <div className="space-y-3">
+                                 {[
+                                     "📝 Detaylı karne raporumu yaz",
+                                     "🎯 Matematiği nasıl düzeltirim?",
+                                     "📅 Bana günlük plan yap",
+                                     "🚀 Motivasyonum düştü",
+                                     "🏫 LGS hedefime nasıl ulaşırım?"
+                                 ].map((suggestion, idx) => (
+                                     <button 
+                                         key={idx}
+                                         onClick={() => {
+                                             setChatInput(suggestion);
+                                         }}
+                                         className="w-full text-left bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl p-3 text-xs md:text-sm transition-all"
+                                     >
+                                         {suggestion}
+                                     </button>
+                                 ))}
+                             </div>
+                         </div>
+
+                         <div className="relative z-10 mt-6 pt-6 border-t border-white/10 text-center">
+                             <p className="text-xs text-white/60 italic">
+                                 "Kukul AI, senin verilerine göre konuşur. Ne kadar çok deneme yüklersen, seni o kadar iyi tanır."
+                             </p>
+                         </div>
+                    </div>
+                 </div>
+             </div>
+        )}
+
+        {/* TAB 2: EXECUTIVE SUMMARY */}
         {activeTab === 'ozet' && (
           <div className="animate-fade-in-up">
             
@@ -1126,118 +1216,6 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
           </div>
         )}
 
-        {/* TAB 2: COACHING CHAT (NEW) */}
-        {activeTab === 'koc' && (
-             <div className="animate-fade-in-up">
-                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Chat Window */}
-                    <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col h-[600px] overflow-hidden relative">
-                         {/* Header */}
-                         <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 flex items-center gap-3">
-                             <div className="bg-gradient-to-tr from-brand-500 to-indigo-500 p-2 rounded-xl text-white shadow-lg shadow-brand-500/20">
-                                 <Bot className="w-6 h-6" />
-                             </div>
-                             <div>
-                                 <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                                     Kukul AI Koç
-                                     <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full uppercase font-bold tracking-wider">Online</span>
-                                 </h3>
-                                 <p className="text-xs text-slate-500 dark:text-slate-400">Verilerine dayalı kişisel eğitim danışmanın</p>
-                             </div>
-                         </div>
-                         
-                         {/* Messages Area */}
-                         <div className="flex-grow overflow-y-auto p-6 space-y-4 bg-slate-50/30 dark:bg-slate-900/30">
-                             {chatHistory.map((msg, idx) => (
-                                 <div key={idx} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                     <div className={`max-w-[85%] md:max-w-[75%] rounded-2xl p-4 text-sm leading-relaxed shadow-sm ${
-                                         msg.role === 'user' 
-                                            ? 'bg-brand-600 dark:bg-brand-600 text-white rounded-tr-none' 
-                                            : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-tl-none border border-slate-100 dark:border-slate-600'
-                                     }`}>
-                                         {msg.role === 'model' ? (
-                                             <FormattedText text={msg.text} textColor={msg.role === 'user' ? 'text-white' : undefined} />
-                                         ) : (
-                                             msg.text
-                                         )}
-                                     </div>
-                                 </div>
-                             ))}
-                             {isChatLoading && (
-                                 <div className="flex justify-start w-full">
-                                     <div className="bg-white dark:bg-slate-700 rounded-2xl rounded-tl-none p-4 border border-slate-100 dark:border-slate-600 flex items-center gap-2 shadow-sm">
-                                         <Loader2 className="w-4 h-4 text-brand-600 dark:text-brand-400 animate-spin" />
-                                         <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Kukul AI yazıyor...</span>
-                                     </div>
-                                 </div>
-                             )}
-                             <div ref={chatEndRef} />
-                         </div>
-
-                         {/* Input Area */}
-                         <div className="p-4 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700">
-                             <form onSubmit={handleSendMessage} className="flex gap-3">
-                                 <input 
-                                     type="text" 
-                                     value={chatInput}
-                                     onChange={(e) => setChatInput(e.target.value)}
-                                     placeholder="Merak ettiğin her şeyi sorabilirsin..."
-                                     className="flex-grow bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-all"
-                                     disabled={isChatLoading}
-                                 />
-                                 <button 
-                                     type="submit" 
-                                     disabled={!chatInput.trim() || isChatLoading}
-                                     className="bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-white p-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg shadow-brand-500/20"
-                                 >
-                                     <Send className="w-5 h-5" />
-                                 </button>
-                             </form>
-                         </div>
-                    </div>
-
-                    {/* Sidebar Suggestions */}
-                    <div className="bg-gradient-to-br from-indigo-900 to-brand-900 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden flex flex-col justify-between">
-                         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-                         
-                         <div className="relative z-10">
-                             <h4 className="font-bold text-lg mb-4 flex items-center gap-2">
-                                 <Lightbulb className="w-5 h-5 text-yellow-300" />
-                                 Neler Sorabilirsin?
-                             </h4>
-                             <div className="space-y-3">
-                                 {[
-                                     "📝 Detaylı karne raporumu yaz",
-                                     "🎯 Matematiği nasıl düzeltirim?",
-                                     "📅 Bana günlük plan yap",
-                                     "🚀 Motivasyonum düştü",
-                                     "🏫 LGS hedefime nasıl ulaşırım?"
-                                 ].map((suggestion, idx) => (
-                                     <button 
-                                         key={idx}
-                                         onClick={() => {
-                                             setChatInput(suggestion);
-                                             // Optional: auto submit
-                                             // handleSendMessage(); 
-                                         }}
-                                         className="w-full text-left bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl p-3 text-xs md:text-sm transition-all"
-                                     >
-                                         {suggestion}
-                                     </button>
-                                 ))}
-                             </div>
-                         </div>
-
-                         <div className="relative z-10 mt-6 pt-6 border-t border-white/10 text-center">
-                             <p className="text-xs text-white/60 italic">
-                                 "Kukul AI, senin verilerine göre konuşur. Ne kadar çok deneme yüklersen, seni o kadar iyi tanır."
-                             </p>
-                         </div>
-                    </div>
-                 </div>
-             </div>
-        )}
-
         {/* Tab 3: Plan */}
         {activeTab === 'plan' && (
              <div className="animate-fade-in-up">
@@ -1247,7 +1225,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                          const lessonConf = Object.values(LESSON_CONFIG).find(c => c.label === lessonLabel) || { color: '#64748b', icon: BookOpen };
                          
                          return (
-                             <div key={idx} className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-slate-700 h-full">
+                             <div key={idx} className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-slate-700 h-full flex flex-col">
                                  <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-100 dark:border-slate-700">
                                      <div className="p-1.5 rounded-lg text-white" style={{ backgroundColor: lessonConf.color }}>
                                          <lessonConf.icon className="w-4 h-4" />
@@ -1255,17 +1233,41 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                      <h3 className="font-bold text-slate-800 dark:text-slate-100">{lessonLabel}</h3>
                                      <span className="ml-auto text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-full text-slate-500 font-bold">{lessonPlan.length} Görev</span>
                                  </div>
-                                 <div className="space-y-4">
-                                     {lessonPlan.sort((a,b) => a.oncelik - b.oncelik).map((item, i) => (
-                                         <div key={i} className={`p-3 rounded-xl border-l-4 ${item.oncelik === 1 ? 'bg-red-50 dark:bg-red-900/10 border-red-500' : item.oncelik === 2 ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-500' : 'bg-blue-50 dark:bg-blue-900/10 border-blue-500'}`}>
+                                 <div className="space-y-4 flex-grow">
+                                     {lessonPlan.sort((a,b) => (b.onem_derecesi || 0) - (a.onem_derecesi || 0)).map((item, i) => (
+                                         <div key={i} className={`p-3 rounded-xl border-l-4 hover:shadow-md transition-shadow duration-200 ${item.oncelik === 1 ? 'bg-red-50 dark:bg-red-900/10 border-red-500' : item.oncelik === 2 ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-500' : 'bg-blue-50 dark:bg-blue-900/10 border-blue-500'}`}>
                                              <div className="flex justify-between items-start mb-1">
-                                                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{item.konu}</span>
-                                                 {item.oncelik === 1 && <span className="text-[10px] font-bold text-white bg-red-500 px-1.5 py-0.5 rounded">ACİL</span>}
-                                                 {item.oncelik === 2 && <span className="text-[10px] font-bold text-white bg-amber-500 px-1.5 py-0.5 rounded">ÖNEMLİ</span>}
-                                                 {item.oncelik === 3 && <span className="text-[10px] font-bold text-white bg-blue-500 px-1.5 py-0.5 rounded">TEKRAR</span>}
+                                                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500 line-clamp-1 flex-1 mr-2">{item.konu}</span>
+                                                 {/* Priority Badge */}
+                                                 {item.oncelik === 1 && <span className="text-[10px] font-bold text-white bg-red-500 px-1.5 py-0.5 rounded shrink-0">ACİL</span>}
+                                                 {item.oncelik === 2 && <span className="text-[10px] font-bold text-white bg-amber-500 px-1.5 py-0.5 rounded shrink-0">ÖNEMLİ</span>}
+                                                 {item.oncelik === 3 && <span className="text-[10px] font-bold text-white bg-blue-500 px-1.5 py-0.5 rounded shrink-0">TEKRAR</span>}
                                              </div>
-                                             <p className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">{item.tavsiye}</p>
-                                             <p className="text-xs text-slate-500 dark:text-slate-400 italic">"{item.sebep}"</p>
+                                             
+                                             <p className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-1 leading-snug">{item.tavsiye}</p>
+                                             <p className="text-xs text-slate-500 dark:text-slate-400 italic mb-2">"{item.sebep}"</p>
+                                             
+                                             {/* New: Impact/Importance Rating Bar */}
+                                             <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-200/50 dark:border-slate-700/50">
+                                                 <div className="p-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-400">
+                                                    <Zap className="w-3 h-3" />
+                                                 </div>
+                                                 <div className="flex-1">
+                                                     <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase mb-0.5">
+                                                         <span>Etki Puanı</span>
+                                                         <span>{item.onem_derecesi || 5}/10</span>
+                                                     </div>
+                                                     <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                                         <div 
+                                                             className="h-full rounded-full"
+                                                             style={{ 
+                                                                 width: `${(item.onem_derecesi || 5) * 10}%`,
+                                                                 backgroundColor: lessonConf.color
+                                                             }}
+                                                         ></div>
+                                                     </div>
+                                                 </div>
+                                             </div>
                                          </div>
                                      ))}
                                  </div>
@@ -1454,80 +1456,6 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
              </div>
         )}
 
-        {/* Tab 5: Trend */}
-        {activeTab === 'trend' && (
-            <div className="animate-fade-in-up space-y-8">
-                {globalTrendData.length < 2 ? (
-                    <div className="text-center p-12 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700">
-                        <Activity className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-slate-600 dark:text-slate-400">Yeterli veri yok</h3>
-                        <p className="text-slate-500 text-sm">Trend analizi için en az 2 farklı sınav yüklemelisin.</p>
-                    </div>
-                ) : (
-                    <>
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Gelişim Grafiği</h3>
-                                <p className="text-slate-500 dark:text-slate-400 text-sm">{globalTrendData.length} sınav üzerinden değerlendirme</p>
-                            </div>
-                            <div className="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-lg">
-                                <button 
-                                    onClick={() => setSelectedTrendLesson('Tümü')} 
-                                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${selectedTrendLesson === 'Tümü' ? 'bg-white dark:bg-slate-600 text-brand-600 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
-                                >
-                                    Genel Puan
-                                </button>
-                                {Object.keys(LESSON_CONFIG).map(l => (
-                                    <button 
-                                        key={l} 
-                                        onClick={() => setSelectedTrendLesson(l)} 
-                                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${selectedTrendLesson === l ? 'bg-white dark:bg-slate-600 text-brand-600 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
-                                    >
-                                        {l}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 h-80">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={globalTrendData}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.5} />
-                                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} dy={10} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} domain={['auto', 'auto']} />
-                                    <Tooltip 
-                                        contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', backgroundColor: 'var(--tooltip-bg, #fff)'}}
-                                        cursor={{stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '4 4'}}
-                                    />
-                                    <Legend iconType="circle" />
-                                    {selectedTrendLesson === 'Tümü' ? (
-                                        <Line 
-                                            type="monotone" 
-                                            dataKey="totalScore" 
-                                            name="Toplam Puan" 
-                                            stroke="#4f46e5" 
-                                            strokeWidth={4} 
-                                            dot={{r: 4, strokeWidth: 2, fill: '#fff'}} 
-                                            activeDot={{r: 6}}
-                                        />
-                                    ) : (
-                                        <Line 
-                                            type="monotone" 
-                                            dataKey={selectedTrendLesson} 
-                                            name={`${selectedTrendLesson} Net`} 
-                                            stroke={LESSON_CONFIG[selectedTrendLesson].color} 
-                                            strokeWidth={4} 
-                                            dot={{r: 4, strokeWidth: 2, fill: '#fff'}} 
-                                            activeDot={{r: 6}} 
-                                        />
-                                    )}
-                                </LineChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </>
-                )}
-            </div>
-        )}
       </div>
     </div>
   );
