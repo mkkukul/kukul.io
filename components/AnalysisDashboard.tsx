@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ComprehensiveAnalysis, TopicAnalysis, ChatMessage } from '../types';
 import { chatWithCoach } from '../services/geminiService';
@@ -1086,9 +1087,22 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                             {step.baslik}
                                         </h4>
                                         
-                                        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6 line-clamp-2 min-h-[40px]">
+                                        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
                                             {step.ne_yapmali}
                                         </p>
+                                        
+                                        {/* Nasıl Yapmalı (UPDATED DESIGN) */}
+                                        <div className="mb-6 bg-indigo-50/50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800/50 group-hover:border-indigo-200 dark:group-hover:border-indigo-700 transition-colors">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className="p-1 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg">
+                                                    <BrainCircuit className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                                                </div>
+                                                <span className="text-sm font-bold text-indigo-900 dark:text-indigo-200">🚀 Nasıl Uygulanır?</span>
+                                            </div>
+                                            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
+                                                <SafeHtmlText content={step.nasil_yapmali} />
+                                            </p>
+                                        </div>
                                         
                                         {/* Alt Bilgiler */}
                                         <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700/50">
@@ -1247,6 +1261,8 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                              <div className="flex justify-between items-start mb-1">
                                                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{item.konu}</span>
                                                  {item.oncelik === 1 && <span className="text-[10px] font-bold text-white bg-red-500 px-1.5 py-0.5 rounded">ACİL</span>}
+                                                 {item.oncelik === 2 && <span className="text-[10px] font-bold text-white bg-amber-500 px-1.5 py-0.5 rounded">ÖNEMLİ</span>}
+                                                 {item.oncelik === 3 && <span className="text-[10px] font-bold text-white bg-blue-500 px-1.5 py-0.5 rounded">TEKRAR</span>}
                                              </div>
                                              <p className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">{item.tavsiye}</p>
                                              <p className="text-xs text-slate-500 dark:text-slate-400 italic">"{item.sebep}"</p>

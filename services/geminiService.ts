@@ -67,6 +67,18 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
         throw new Error("Geçerli dosya verisi bulunamadı.");
     }
 
+    // Add specific instruction for robust data extraction
+    parts.push({ text: `
+    GÖREV: Yüklenen sınav sonuç belgelerini ve konu analizi tablolarını analiz et.
+    
+    ÖNEMLİ YÖNERGELER:
+    1. Görsellerdeki "Konu Analizi" veya "Ders Başarısı" tablolarını satır satır tara.
+    2. Konu isimlerini doğru oku. Eğer görselde "Fiilimsiler-1", "Fiilimsiler-2" gibi parçalı satırlar varsa, bunları "Fiilimsiler" başlığı altında BİRLEŞTİR ve sayılarını topla.
+    3. Tablodaki sayısal verileri (Doğru, Yanlış, Boş) değiştirmeden ve yuvarlamadan aktar.
+    4. Görselde OLMAYAN hiçbir konuyu veya puanı uydurma.
+    5. Öğrenci adını, şubesini ve sınav adını belgenin başlık kısımlarından bul.
+    `});
+
     // Add system prompt at the end
     parts.push({ text: SYSTEM_PROMPT });
 
