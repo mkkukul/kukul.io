@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UploadCloud, FileImage, FileText, Loader2, Plus, X, BarChart3 } from 'lucide-react';
 
 interface Props {
@@ -16,7 +16,6 @@ const loadingMessages = [
 ];
 
 const FileUpload: React.FC<Props> = ({ onFilesSelected, isLoading }) => {
-  const inputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
@@ -84,10 +83,12 @@ const FileUpload: React.FC<Props> = ({ onFilesSelected, isLoading }) => {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    e.preventDefault();
+    // e.preventDefault(); // removed to allow default input behavior
     if (e.target.files) {
       const newFiles = Array.from(e.target.files) as File[];
       addFiles(newFiles);
+      // Clear value to allow selecting the same file again if needed
+      e.target.value = "";
     }
   };
 
@@ -105,10 +106,6 @@ const FileUpload: React.FC<Props> = ({ onFilesSelected, isLoading }) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const onButtonClick = () => {
-    inputRef.current?.click();
-  };
-
   const handleAnalyzeClick = () => {
     if (selectedFiles.length > 0) {
       onFilesSelected(selectedFiles);
@@ -117,7 +114,8 @@ const FileUpload: React.FC<Props> = ({ onFilesSelected, isLoading }) => {
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6">
-      <div 
+      <label
+        htmlFor="file-upload"
         className={`relative group flex flex-col items-center justify-center w-full min-h-[300px] rounded-3xl border-2 border-dashed transition-all duration-300 ease-in-out cursor-pointer
           ${dragActive 
             ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20 shadow-xl scale-[1.02]' 
@@ -129,14 +127,13 @@ const FileUpload: React.FC<Props> = ({ onFilesSelected, isLoading }) => {
         onDragLeave={handleDrag}
         onDragOver={handleDrag}
         onDrop={handleDrop}
-        onClick={onButtonClick}
       >
         <input
-          ref={inputRef}
+          id="file-upload"
           type="file"
           className="hidden"
-          // Mobil cihazlarda PDF seçimini garanti altına almak için MIME type ve uzantıları birlikte kullanıyoruz
-          accept="image/jpeg,image/png,image/jpg,image/heic,application/pdf,.pdf,.jpg,.jpeg,.png,.heic"
+          // Mobil uyumluluk için image/* en başa eklendi
+          accept="image/*,application/pdf,.pdf,.jpg,.jpeg,.png,.heic"
           multiple
           onChange={handleChange}
           disabled={isLoading}
@@ -191,7 +188,7 @@ const FileUpload: React.FC<Props> = ({ onFilesSelected, isLoading }) => {
                 </>
             )}
         </div>
-      </div>
+      </label>
 
       {/* File List & Action Button */}
       {selectedFiles.length > 0 && !isLoading && (
