@@ -133,10 +133,14 @@ const App: React.FC = () => {
 
     try {
       const base64Promises = files.map(async (file) => {
-        if (file.type.startsWith('image/')) {
+        // Robust check for images: Check MIME type OR file extension
+        // Mobile browsers sometimes have empty types for certain files
+        const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|heic|webp)$/i.test(file.name);
+        
+        if (isImage) {
             return await compressImage(file);
         } else {
-            // PDFs are read directly. Gemini handles PDF data efficiently.
+            // PDFs and other text-based formats are read directly. Gemini handles PDF data efficiently.
             return await readFileAsBase64(file);
         }
       });

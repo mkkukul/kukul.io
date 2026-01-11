@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ComprehensiveAnalysis, TopicAnalysis, ChatMessage } from '../types';
 import { chatWithCoach } from '../services/geminiService';
@@ -854,7 +855,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                             : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-tl-none border border-slate-100 dark:border-slate-600'
                                      }`}>
                                          {msg.role === 'model' ? (
-                                             <FormattedText text={msg.text} textColor={msg.role === 'user' ? 'text-white' : undefined} />
+                                             <FormattedText text={msg.text} />
                                          ) : (
                                              msg.text
                                          )}

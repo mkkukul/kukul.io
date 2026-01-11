@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from 'react';
 import { UploadCloud, FileImage, FileText, Loader2, Plus, X, BarChart3 } from 'lucide-react';
 
@@ -136,7 +135,8 @@ const FileUpload: React.FC<Props> = ({ onFilesSelected, isLoading }) => {
           ref={inputRef}
           type="file"
           className="hidden"
-          accept="image/*,application/pdf"
+          // Mobil cihazlarda PDF seçimini garanti altına almak için MIME type ve uzantıları birlikte kullanıyoruz
+          accept="image/jpeg,image/png,image/jpg,image/heic,application/pdf,.pdf,.jpg,.jpeg,.png,.heic"
           multiple
           onChange={handleChange}
           disabled={isLoading}
@@ -178,10 +178,15 @@ const FileUpload: React.FC<Props> = ({ onFilesSelected, isLoading }) => {
                     <div className="mb-4 p-4 bg-brand-50 dark:bg-slate-800 rounded-full group-hover:scale-110 transition-transform duration-300">
                         <UploadCloud className="w-10 h-10 text-brand-600 dark:text-brand-400" />
                     </div>
-                    <div className="flex gap-2">
-                        <span className="px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded text-xs text-slate-500 dark:text-slate-400 font-mono">JPG</span>
-                        <span className="px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded text-xs text-slate-500 dark:text-slate-400 font-mono">PDF</span>
-                        <span className="px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded text-xs text-slate-500 dark:text-slate-400 font-mono">Çoklu Dosya</span>
+                    <p className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-2">
+                        Sınav kağıdı veya PDF yükle
+                    </p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 max-w-xs mx-auto leading-relaxed">
+                        Dosyaları buraya sürükleyin veya seçmek için ekrana dokunun
+                    </p>
+                    <div className="flex flex-wrap justify-center gap-2">
+                        <span className="px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded text-xs text-slate-500 dark:text-slate-400 font-mono border border-slate-200 dark:border-slate-600">JPG/PNG</span>
+                        <span className="px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded text-xs text-slate-500 dark:text-slate-400 font-mono border border-slate-200 dark:border-slate-600">PDF</span>
                     </div>
                 </>
             )}
