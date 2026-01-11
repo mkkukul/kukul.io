@@ -114,8 +114,13 @@ const FileUpload: React.FC<Props> = ({ onFilesSelected, isLoading }) => {
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6">
+      {/* 
+         MOBİL UYUMLULUK DÜZELTMESİ:
+         1. Label ID'si (htmlFor) ile Input ID'si (id) 'file-upload-input' olarak eşleştirildi.
+         2. accept parametresine image/* ve application/pdf eklendi.
+      */}
       <label
-        htmlFor="file-upload"
+        htmlFor="file-upload-input"
         className={`relative group flex flex-col items-center justify-center w-full min-h-[300px] rounded-3xl border-2 border-dashed transition-all duration-300 ease-in-out cursor-pointer
           ${dragActive 
             ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20 shadow-xl scale-[1.02]' 
@@ -129,10 +134,9 @@ const FileUpload: React.FC<Props> = ({ onFilesSelected, isLoading }) => {
         onDrop={handleDrop}
       >
         <input
-          id="file-upload"
+          id="file-upload-input"
           type="file"
           className="hidden"
-          // Mobil uyumluluk için image/* en başa eklendi
           accept="image/*,application/pdf,.pdf,.jpg,.jpeg,.png,.heic"
           multiple
           onChange={handleChange}
