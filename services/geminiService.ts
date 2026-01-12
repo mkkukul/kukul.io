@@ -147,7 +147,7 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
             },
             calisma_plani: {
                 type: Type.ARRAY,
-                description: "Her ders için (Mat, Fen, Tr, İnk, İng, Din) 5'er adet, toplam 30 adet görev içeren plan.",
+                description: "Her ders için (Mat, Fen, Tr, İnk, İng, Din) 3'er adet, toplam 18 adet görev içeren plan.",
                 items: {
                     type: Type.OBJECT,
                     properties: {
@@ -217,7 +217,7 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
             }
             if (candidate.finishReason === "MAX_TOKENS") {
                 console.error(`${logPrefix} Output truncated due to MAX_TOKENS.`);
-                throw new Error("Analiz sonucu çok uzun olduğu için kesildi. Lütfen daha az sayıda sayfa yüklemeyi deneyin.");
+                throw new Error("Analiz sonucu modelin kelime limitine takıldı (Çok fazla sayfa veya detay). Lütfen daha az sayıda sayfa yüklemeyi deneyin veya sadece son sınav sonucunu yükleyin.");
             }
             if (candidate.finishReason === "RECITATION") {
                 throw new Error("Model, içerikteki metnin telif hakkı veya ezberlenmiş içerik korumasına takıldığını tespit etti. Lütfen farklı bir görsel deneyin.");

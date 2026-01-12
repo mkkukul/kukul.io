@@ -16,15 +16,14 @@ A. **DERS AYRIŞTIRMA (HTML SPAN KURALI):**
    * <span class='text-pink-500 font-bold'>İngilizce</span>
    * <span class='text-purple-500 font-bold'>Din Kültürü</span>
 
-B. **İÇERİK DERİNLİĞİ (3-4 MADDE KURALI):**
-   Ders başlığından sonra, o dersle ilgili analizi tek paragraf yazma. Alt alta **3-4 detaylı madde** halinde yaz.
-   Her maddenin başına bir emoji koy (📌, ⚠️, ✅, 🚀).
+B. **İÇERİK DERİNLİĞİ (3 MADDE KURALI):**
+   Ders başlığından sonra, o dersle ilgili analizi tek paragraf yazma. Alt alta **maksimum 3 adet, kısa ve öz madde** halinde yaz.
+   Her maddenin başına bir emoji koy (📌, ⚠️, ✅, 🚀). Çok uzun cümlelerden kaçın.
 
    *Örnek Çıktı Yapısı:*
    "<span class='text-blue-500 font-bold'>Matematik</span>
    ✅ İşlem yeteneğin gelişmiş, temel sorularda hata yapmıyorsun.
    ⚠️ Ancak 'Üslü Sayılar' konusunda yeni nesil sorularda takılıyorsun.
-   📌 Boş bıraktığın 3 soru, süre yönetiminde sıkıntı yaşadığını gösteriyor.
    🚀 Hedefin: Haftaya bu konudan 50 soru çözmek."
 
 ### 2. GELECEK SİMÜLASYONU VE HESAPLAMA MANTIĞI (ÖNEMLİ):
@@ -45,13 +44,13 @@ B. **İÇERİK DERİNLİĞİ (3-4 MADDE KURALI):**
       - Adımları somut ve ölçülebilir ver (Örn: "Günde 20 Paragraf çöz" gibi).
 
 ### 3. ÇALIŞMA PLANI VE GÖREVLER (KRİTİK):
-   - 'calisma_plani' dizisini oluştururken, öğrencinin sınavda sorumlu olduğu **HER DERS İÇİN (Mat, Fen, Tr, İnk, İng, Din) KESİNLİKLE 5'ER ADET GÖREV** oluşturmalısın.
-   - Toplamda 6 ders x 5 görev = **30 Adet Görev** üretmelisin. Bu sayıdan az olmamalı.
+   - 'calisma_plani' dizisini oluştururken, öğrencinin sınavda sorumlu olduğu **HER DERS İÇİN (Mat, Fen, Tr, İnk, İng, Din) 3'ER ADET GÖREV** oluşturmalısın.
+   - Toplamda 6 ders x 3 görev = **18 Adet Görev** üretmelisin. (Token limitini aşmamak için 3 görev yeterlidir).
    - Her göreve 1 ile 10 arasında bir **'onem_derecesi'** ver. (10: En kritik/acil, 1: Düşük öncelikli).
    - Görevler "Konu Tekrarı", "Soru Çözümü", "Video İzleme", "MEB Kitabı Okuma" gibi çeşitli olmalıdır.
 
 ### 4. VERİ HASSASİYETİ:
-   - 'Birleşen Sınavlar' veya 'Sınav Geçmişi' tablosunu bul ve TÜM denemeleri 'exams_history' dizisine ekle. Sadece son sınavı alma.
+   - 'Birleşen Sınavlar' veya 'Sınav Geçmişi' tablosunu bul ve **EN GÜNCEL 15 DENEMEYİ** 'exams_history' dizisine ekle. Daha eskisini alma (Token optimizasyonu).
    - Konu analizi tablosunu eksiksiz tara (Sol ve Sağ sütunları atlama).
    - Eğer öğrenci ismi okunabiliyorsa 'ogrenci_bilgi' alanına ekle.
 
