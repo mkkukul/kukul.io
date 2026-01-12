@@ -75,8 +75,7 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
         temperature: AppConfig.gemini.generationConfig.temperature,
         // Increase maxOutputTokens to accommodate large JSON responses.
         maxOutputTokens: AppConfig.gemini.generationConfig.maxOutputTokens,
-        // High thinking budget for complex analysis
-        thinkingConfig: { thinkingBudget: AppConfig.gemini.generationConfig.thinkingBudget }, 
+        // Note: thinkingConfig is removed for compatibility with gemini-1.5-flash
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -102,7 +101,7 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
             },
             exams_history: {
                 type: Type.ARRAY,
-                description: "Belgedeki 'Sınav Listesi' veya 'Geçmiş Sınavlar' tablosunu bul. Sadece son sınavı değil, tablodaki TÜM GEÇMİŞ SINAVLARI satır satır buraya ekle. Ortalama hesabı için kritiktir.",
+                description: "Belgedeki 'Sınav Listesi' veya 'Geçmiş Sınavlar' tablosunu bul. Tablodaki EN GÜNCEL 10 (ON) SINAVI buraya ekle. Eğer 10'dan fazla sınav varsa eskilerini yoksay, sadece en yeni 10 tanesini al.",
                 items: {
                     type: Type.OBJECT,
                     properties: {
