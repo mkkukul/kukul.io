@@ -50,12 +50,12 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
             });
         } else {
             console.error(`${logPrefix} File at index ${index} has invalid base64 format.`);
-            throw new Error(`Dosya #${index + 1} formatı hatalı. Lütfen tekrar yükleyin.`);
+            throw new Error(`Dosya #${index + 1} formatı hatalı veya bozuk. Lütfen dosyayı kontrol edip tekrar yükleyin.`);
         }
     }
 
     if (parts.length === 0) {
-        throw new Error("Geçerli dosya verisi bulunamadı. Lütfen yüklediğiniz dosyaların formatını kontrol edin.");
+        throw new Error("İşlenecek dosya bulunamadı. Lütfen en az bir sınav kağıdı görseli yüklediğinizden emin olun.");
     }
 
     // Add system prompt at the end
@@ -212,14 +212,14 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
             
             if (candidate.finishReason === "SAFETY") {
                 console.error(`${logPrefix} Safety Ratings:`, candidate.safetyRatings);
-                throw new Error("Görsel içerik güvenlik filtrelerine takıldı (Şiddet, Nefret söylemi vb.). Lütfen sadece eğitim materyali içerdiğinden emin olun.");
+                throw new Error("Görsel içerik güvenlik filtrelerine takıldı (Şiddet, Zararlı içerik vb.). Lütfen sadece ders/sınav materyali yüklediğinizden emin olun.");
             }
             if (candidate.finishReason === "MAX_TOKENS") {
                 console.error(`${logPrefix} Output truncated due to MAX_TOKENS.`);
-                throw new Error("Analiz sonucu modelin kelime limitine takıldı (Çok fazla sayfa veya detay). Lütfen daha az sayıda sayfa yüklemeyi deneyin veya sadece son sınav sonucunu yükleyin.");
+                throw new Error("Analiz çok uzun sürdü ve yarıda kesildi. Bu durum genellikle çok fazla sayfa yüklendiğinde oluşur. Lütfen daha az sayıda sayfa (Örn: Sadece sonuç özeti) yüklemeyi deneyin.");
             }
             if (candidate.finishReason === "RECITATION") {
-                throw new Error("Model, içerikteki metnin telif hakkı veya ezberlenmiş içerik korumasına takıldığını tespit etti. Lütfen farklı bir görsel deneyin.");
+                throw new Error("Telif hakkı içeren metin tespiti nedeniyle analiz tamamlanamadı. Lütfen farklı bir görsel deneyin.");
             }
             if (candidate.finishReason === "OTHER") {
                 throw new Error("Analiz işlemi teknik bir nedenden dolayı tamamlanamadı. Lütfen tekrar deneyin.");
@@ -230,7 +230,7 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
     const textResponse = response.text;
     if (!textResponse) {
       console.error(`${logPrefix} Empty text response. Full Response Object:`, JSON.stringify(response, null, 2));
-      throw new Error("Model boş yanıt döndürdü. Görsel bulanık olabilir veya metin içerip içermediğini kontrol edin.");
+      throw new Error("Yapay zeka boş bir yanıt döndürdü. Görsel çok bulanık olabilir veya metin içermiyor olabilir. Lütfen fotoğrafı kontrol edip tekrar yükleyin.");
     }
 
     const cleanJson = textResponse.replace(/```json|```/g, '').trim();
@@ -247,7 +247,7 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
     } catch (parseError) {
         console.error(`${logPrefix} JSON Parse/Validation Error:`, parseError);
         console.error(`${logPrefix} Raw Response Text (First 1000 chars):`, textResponse.substring(0, 1000));
-        throw new Error("Yapay zeka çıktısı işlenemedi. Genellikle görselin net olmaması buna neden olur. Lütfen fotoğrafı daha net çekip tekrar deneyin.");
+        throw new Error("Sonuçlar okunurken bir hata oluştu. Genellikle görselin net olmaması veya el yazısının okunamaması buna neden olur. Lütfen daha net bir fotoğraf çekip tekrar deneyin.");
     }
 
   } catch (error: any) {
@@ -268,49 +268,50 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
 
     // 400 Bad Request
     if (status === 400 || msg.includes("400") || msg.includes("INVALID_ARGUMENT")) {
-        if (msg.includes("Image") || msg.includes("media") || msg.includes("decode")) {
-            userMessage = "Yüklenen görsel formatı geçersiz veya dosya bozuk. Lütfen standart JPG/PNG formatında, net bir fotoğraf yükleyin.";
-        } else if (msg.includes("API key")) {
-            userMessage = "API Anahtarı yapılandırmasında hata var.";
+        if (msg.includes("API key") || msg.includes("API_KEY")) {
+             userMessage = "⚠️ API Anahtarı Hatası: Sistemde tanımlı API anahtarı geçersiz veya eksik. Lütfen yapılandırma ayarlarını kontrol edin.";
+        } else if (msg.includes("Image") || msg.includes("media") || msg.includes("decode")) {
+            userMessage = "📁 Görsel Hatası: Yüklenen dosya bozuk veya desteklenmeyen bir formatta. Lütfen standart bir JPG/PNG fotoğraf yükleyin.";
         } else {
-            userMessage = "İstek geçersiz (400). Görsel içeriği model tarafından işlenemedi.";
+            userMessage = "İstek Hatası (400): Gönderilen görsel yapay zeka tarafından işlenemedi. Lütfen farklı bir fotoğraf ile tekrar deneyin.";
         }
     } 
     // 401 Unauthorized
     else if (status === 401 || msg.includes("401")) {
-        userMessage = "Yetkilendirme Hatası: API Anahtarı geçersiz veya süresi dolmuş. Lütfen sistem yöneticisi ile iletişime geçin.";
+        userMessage = "🔒 Yetkilendirme Hatası: API Anahtarı geçersiz veya süresi dolmuş. Lütfen sistem yöneticisi ile iletişime geçin.";
     } 
     // 403 Forbidden
     else if (status === 403 || msg.includes("403")) {
-         userMessage = "Erişim Engellendi: Bu API anahtarının bu işlem için yetkisi yok veya fatura hesabı aktif değil (Quota sorunu olabilir).";
+         userMessage = "🚫 Erişim Engellendi: API kotası dolmuş olabilir veya faturalandırma hesabı aktif değil. Lütfen daha sonra tekrar deneyin.";
     }
     // 413 Payload Too Large
     else if (status === 413 || msg.includes("413")) {
-        userMessage = "Dosya boyutu çok büyük. Lütfen 4MB'dan küçük bir görsel yüklemeyi deneyin.";
+        userMessage = "💾 Dosya Çok Büyük: Yüklediğiniz görsel 4MB sınırını aşıyor. Lütfen görseli kırpın veya sıkıştırarak tekrar deneyin.";
     }
     // 429 Too Many Requests
     else if (status === 429 || msg.includes("429") || msg.includes("Quota")) {
-        userMessage = "Sistem şu an çok yoğun veya kota sınırına ulaşıldı. Lütfen 1-2 dakika bekleyip tekrar deneyin.";
+        userMessage = "⏳ Sistem Yoğunluğu: Çok fazla istek gönderildi. Lütfen 1 dakika bekleyip tekrar deneyin.";
     } 
     // 500 Internal Server Error
     else if (status === 500 || msg.includes("500")) {
-         userMessage = "Sunucu Hatası (500): Google AI servisinde geçici bir sorun var. Lütfen daha sonra tekrar deneyin.";
+         userMessage = "🔥 Sunucu Hatası: Google AI servisinde geçici bir sorun var. Lütfen birkaç dakika sonra tekrar deneyin.";
     } 
     // 503/504 Service Unavailable / Timeout
     else if (status === 503 || status === 504 || msg.includes("503") || msg.includes("504") || msg.includes("overloaded")) {
-         userMessage = "AI Servisi şu an cevap veremiyor (Aşırı Yüklenme). İnternet bağlantınızı kontrol edip 30 saniye sonra tekrar deneyin.";
+         userMessage = "🔌 Bağlantı Zaman Aşımı: AI servisi şu an cevap veremiyor. İnternet bağlantınızı kontrol edin ve tekrar deneyin.";
     }
     // Safety / Content Policy
     else if (msg.includes("SAFETY") || msg.includes("blocked")) {
-         userMessage = "İçerik Güvenliği: Yüklenen görsel, güvenlik filtrelerine takıldı. Sınav kağıdının net ve uygun olduğundan emin olun.";
+         userMessage = "🛡️ İçerik Filtresi: Yüklenen görsel, güvenlik politikalarına takıldı. Sınav kağıdının sadece eğitim materyali içerdiğinden emin olun.";
     }
     // Client Side Errors
-    else if (msg.includes("NetworkError") || msg.includes("fetch")) {
-        userMessage = "İnternet bağlantısı hatası. Lütfen ağ bağlantınızı kontrol edin.";
+    else if (msg.includes("NetworkError") || msg.includes("fetch") || msg.includes("Failed to fetch")) {
+        userMessage = "📡 Bağlantı Hatası: İnternet bağlantınız kopmuş olabilir. Lütfen ağ bağlantınızı kontrol edin.";
     }
     else if (msg) {
-        // Fallback: If it's a simple string message, show it. If it's a JSON string, try to parse or hide it.
-        if (!msg.trim().startsWith('{')) {
+        // Fallback: If it's a simple string message, show it.
+        // If it looks like a raw JSON error, keep generic message.
+        if (!msg.trim().startsWith('{') && msg.length < 200) {
              userMessage = `${msg}`;
         }
     }
