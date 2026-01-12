@@ -290,7 +290,10 @@ const App: React.FC = () => {
         
         {/* Footer */}
         <footer className="py-6 text-center text-slate-400 dark:text-slate-600 text-sm">
-          <p>Bu Uygulama Beta Test Aşamasındadır. © {new Date().getFullYear()} Kukul.io. kukul.ai 0.61 tarafından desteklenmektedir.</p>
+          <div className="flex flex-col gap-1">
+            <p>Bu Uygulama Beta Test Aşamasındadır.</p>
+            <p>© 2026 Kukul.io Beta 0.61 sürümüdür.</p>
+          </div>
         </footer>
 
       </div>
