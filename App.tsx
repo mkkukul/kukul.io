@@ -62,6 +62,7 @@ const App: React.FC = () => {
   };
 
   // Helper function to compress images
+  // OPTIMIZED FOR SPEED: Reduced max dimension and quality
   const compressImage = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -74,10 +75,10 @@ const App: React.FC = () => {
           let width = img.width;
           let height = img.height;
           
-          // OPTIMIZATION for SPEED: 
-          // 1280px is a good balance for speed vs OCR accuracy. 
-          // Previous settings were safer but slower. 1280px drastically reduces tokens/bandwidth.
-          const MAX_DIMENSION = 1280;
+          // SPEED OPTIMIZATION:
+          // Reduced from 1280 to 1024. This significantly reduces tokens sent to Gemini
+          // while maintaining enough clarity for OCR on standard fonts.
+          const MAX_DIMENSION = 1024;
 
           if (width > height) {
             if (width > MAX_DIMENSION) {
@@ -96,21 +97,19 @@ const App: React.FC = () => {
           const ctx = canvas.getContext('2d');
           
           if (ctx) {
-             // Medium quality smoothing is faster than high and sufficient for OCR
+             // Low quality smoothing is faster and usually sharper for text contrast
              ctx.imageSmoothingEnabled = true;
-             ctx.imageSmoothingQuality = 'medium';
+             ctx.imageSmoothingQuality = 'low';
              
              // CRITICAL: Fill white background. 
-             // Transparent PNGs often turn black in OCR engines/Base64, causing data loss.
              ctx.fillStyle = '#FFFFFF';
              ctx.fillRect(0, 0, width, height);
              
              ctx.drawImage(img, 0, 0, width, height);
           }
           
-          // OPTIMIZATION: 0.4 quality reduces file size further
-          // This improves upload and processing speed significantly.
-          resolve(canvas.toDataURL('image/jpeg', 0.4));
+          // SPEED OPTIMIZATION: 0.35 quality is the sweet spot for legible text but small file size.
+          resolve(canvas.toDataURL('image/jpeg', 0.35));
         };
         img.onerror = (err) => reject(err);
       };
