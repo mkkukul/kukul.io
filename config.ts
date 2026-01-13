@@ -9,7 +9,7 @@ export const AppConfig = {
     // Accessing process.env.API_KEY here ensures it is captured correctly by build tools.
     apiKey: process.env.API_KEY || "",
     // Model configuration
-    modelName: 'gemini-1.5-flash',
+    modelName: 'gemini-2.0-flash',
     generationConfig: {
       temperature: 0.0,
       maxOutputTokens: 16384,
@@ -23,6 +23,6 @@ export const AppConfig = {
  */
 export const validateConfig = () => {
   if (!AppConfig.gemini.apiKey) {
-    throw new Error("API Anahtarı (API_KEY) yapılandırması eksik. Lütfen ortam değişkenlerini kontrol edin.");
+    throw new Error("Sistem yapılandırma hatası: API Anahtarı bulunamadı. Lütfen yönetici ile iletişime geçin.");
   }
 };

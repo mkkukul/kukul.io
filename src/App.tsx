@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import FileUpload from './components/FileUpload';
 import AnalysisDashboard from './components/AnalysisDashboard';
@@ -6,6 +5,12 @@ import HistoryDashboard from './components/HistoryDashboard';
 import { analyzeExamFiles } from './services/geminiService';
 import { ComprehensiveAnalysis, AppState } from './types';
 import { AlertCircle, RefreshCcw, Brain, Moon, Sun } from 'lucide-react';
+
+// New interface matching the service update
+interface AnalysisPayload {
+    images: string[];
+    text?: string;
+}
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(AppState.IDLE);
@@ -62,89 +67,14 @@ const App: React.FC = () => {
     saveHistoryToStorage(updatedHistory);
   };
 
-  // Helper function to compress images
-  const compressImage = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          
-          // OPTIMIZATION for SPEED: 
-          // 1280px is a good balance for speed vs OCR accuracy. 
-          const MAX_DIMENSION = 1280;
-
-          if (width > height) {
-            if (width > MAX_DIMENSION) {
-              height *= MAX_DIMENSION / width;
-              width = MAX_DIMENSION;
-            }
-          } else {
-            if (height > MAX_DIMENSION) {
-              width *= MAX_DIMENSION / height;
-              height = MAX_DIMENSION;
-            }
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          
-          if (ctx) {
-             // Medium quality smoothing is faster than high and sufficient for OCR
-             ctx.imageSmoothingEnabled = true;
-             ctx.imageSmoothingQuality = 'medium';
-             
-             // CRITICAL: Fill white background. 
-             // Transparent PNGs often turn black in OCR engines/Base64, causing data loss.
-             ctx.fillStyle = '#FFFFFF';
-             ctx.fillRect(0, 0, width, height);
-             
-             ctx.drawImage(img, 0, 0, width, height);
-          }
-          
-          // OPTIMIZATION: 0.4 quality reduces file size further
-          resolve(canvas.toDataURL('image/jpeg', 0.4));
-        };
-        img.onerror = () => reject(new Error("Görsel işlenirken hata oluştu. Dosya bozuk olabilir."));
-      };
-      reader.onerror = () => reject(new Error("Dosya okunamadı."));
-    });
-  };
-
-  const readFileAsBase64 = (file: File): Promise<string> => {
-      return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.readAsDataURL(file);
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = () => reject(new Error("Dosya okunamadı."));
-      });
-  };
-
-  const handleFilesSelected = useCallback(async (files: File[]) => {
+  // Updated to receive processed payload (Hybrid Parsing Result)
+  const handleFilesSelected = useCallback(async (payload: AnalysisPayload) => {
     setAppState(AppState.ANALYZING);
     setError(null);
 
     try {
-      const base64Promises = files.map(async (file) => {
-        // Robust check for images
-        const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|heic|webp)$/i.test(file.name);
-        
-        if (isImage) {
-            return await compressImage(file);
-        } else {
-            return await readFileAsBase64(file);
-        }
-      });
-
-      const base64DataArray = await Promise.all(base64Promises);
-      
-      const data = await analyzeExamFiles(base64DataArray);
+      // Send the payload (Images + Text) to Gemini
+      const data = await analyzeExamFiles(payload);
       
       // Add ID and Timestamp
       const analysisWithMeta: ComprehensiveAnalysis = {

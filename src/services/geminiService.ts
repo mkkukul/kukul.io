@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { SYSTEM_PROMPT } from "../constants";
 import { ComprehensiveAnalysis, ChatMessage } from "../types";
@@ -7,59 +6,16 @@ import { validateAndSanitizeAnalysis } from "./validationService";
 
 // --- HELPERS ---
 
-/**
- * Safely parses JSON from a markdown-wrapped string.
- * Gemini often wraps JSON in ```json ... ``` blocks.
- */
 const cleanAndParseJSON = (text: string): any => {
     try {
-        // 1. Remove Markdown code blocks
         let cleaned = text.replace(/```json/g, '').replace(/```/g, '');
-        
-        // 2. Trim whitespace
         cleaned = cleaned.trim();
-        
-        // 3. Parse
         return JSON.parse(cleaned);
     } catch (error) {
         console.error("JSON Parse Error. Raw Text:", text);
         throw new Error("Yapay zeka yanıtı okunabilir formatta gelmedi. Lütfen tekrar deneyin.");
     }
 };
-
-/**
- * Creates a safe fallback object to prevent UI crashes if analysis fails.
- */
-const createFallbackAnalysis = (errorMessage: string): ComprehensiveAnalysis => {
-    return {
-        id: crypto.randomUUID(),
-        savedAt: Date.now(),
-        ogrenci_bilgi: { 
-            ad_soyad: "Analiz Edilemedi", 
-            sube: "-", 
-            numara: "-" 
-        },
-        executive_summary: {
-            mevcut_durum: `### ⚠️ Analiz Başarısız Oldu\n\nMaalesef teknik bir sorun nedeniyle belgeniz detaylı analiz edilemedi. \n\n**Hata Detayı:** ${errorMessage}\n\nLütfen görselin net olduğundan emin olun ve tekrar deneyin.`,
-            guclu_yonler: ["Veri alınamadı"],
-            zayif_yonler: ["Veri alınamadı"],
-            lgs_tahmini_yuzdelik: 0
-        },
-        exams_history: [],
-        konu_analizi: [],
-        calisma_plani: [],
-        simulasyon: {
-            senaryo: "Analiz verisi oluşturulamadı.",
-            hedef_yuzdelik: 0,
-            hedef_puan: 0,
-            puan_araligi: "-",
-            gerekli_net_artisi: "-",
-            gelisim_adimlari: []
-        }
-    };
-};
-
-// --- MAIN SERVICE ---
 
 const getClient = () => {
     try {
@@ -70,30 +26,70 @@ const getClient = () => {
     }
 };
 
-export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<ComprehensiveAnalysis> => {
+// --- TYPES ---
+// Yeni analiz yükü yapısı: Hem metin hem görsel destekler
+export interface AnalysisPayload {
+    images: string[];
+    text?: string;
+}
+
+// --- MAIN SERVICE ---
+
+/**
+ * Analyze Exam Content (Hybrid Mode)
+ * Supports both Base64 Images (Slow/Vision) and Raw Text (Fast/Native).
+ */
+export const analyzeExamFiles = async (payload: AnalysisPayload | string[]): Promise<ComprehensiveAnalysis> => {
     const logPrefix = "[GeminiService]";
-    console.group(`${logPrefix} Starting Robust Analysis`);
+    console.group(`${logPrefix} Starting Hybrid Analysis`);
 
     try {
         const ai = getClient();
         const parts = [];
 
-        // 1. Process Images
-        for (const [index, base64Url] of base64DataUrls.entries()) {
-            const match = base64Url.match(/^data:(.+?);base64,(.+)$/);
-            if (match) {
-                parts.push({
-                    inlineData: {
-                        mimeType: match[1],
-                        data: match[2]
-                    }
-                });
-            } else {
-                throw new Error(`Dosya #${index + 1} formatı desteklenmiyor veya bozuk.`);
+        // Normalize Input: Support legacy array call or new object payload
+        let images: string[] = [];
+        let extractedText = "";
+
+        if (Array.isArray(payload)) {
+            images = payload;
+        } else {
+            images = payload.images || [];
+            extractedText = payload.text || "";
+        }
+
+        // 1. Add Text Context (Fast Path)
+        // Eğer metin varsa, vizyon işlemini azaltmak için metni öncelikli ekle.
+        if (extractedText && extractedText.length > 50) {
+            console.log(`${logPrefix} Using Extracted Text (${extractedText.length} chars)`);
+            parts.push({ 
+                text: `Aşağıda PDF'ten çıkarılmış sınav metni bulunmaktadır. Lütfen bu metni analiz et:\n\n${extractedText}` 
+            });
+        }
+
+        // 2. Add Images (Fallback or Supplemental)
+        // Metin olsa bile grafikler/şekiller için görselleri de ekleyebiliriz,
+        // ancak performans için metin varsa görselleri prompt'ta ikinci plana atabiliriz.
+        if (images.length > 0) {
+             console.log(`${logPrefix} Processing ${images.length} images`);
+             for (const [index, base64Url] of images.entries()) {
+                const match = base64Url.match(/^data:(.+?);base64,(.+)$/);
+                if (match) {
+                    parts.push({
+                        inlineData: {
+                            mimeType: match[1],
+                            data: match[2]
+                        }
+                    });
+                }
             }
         }
 
-        // 2. Construct the Prompt
+        if (parts.length === 0) {
+            throw new Error("Analiz edilecek veri bulunamadı (Ne metin ne de görsel).");
+        }
+
+        // 3. Construct the System Prompt
         const JSON_INSTRUCTION = `
         ÖNEMLİ: Çıktıyı SADECE ve SADECE saf JSON formatında ver. 
         Markdown (kb) veya açıklama metni ekleme.
@@ -102,7 +98,7 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
         {
           "ogrenci_bilgi": { "ad_soyad": "string", "sube": "string", "numara": "string" },
           "executive_summary": {
-            "mevcut_durum": "HTML span etiketli detaylı analiz metni (Matematik mavi, Türkçe kırmızı vb.)",
+            "mevcut_durum": "HTML span etiketli detaylı analiz metni",
             "guclu_yonler": ["string"],
             "zayif_yonler": ["string"],
             "lgs_tahmini_yuzdelik": number
@@ -126,13 +122,11 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
         }
         `;
 
-        // Append instructions
         parts.push({ text: SYSTEM_PROMPT });
         parts.push({ text: JSON_INSTRUCTION });
 
         console.log(`${logPrefix} Sending request to Gemini... Model: ${AppConfig.gemini.modelName}`);
 
-        // 3. Call API
         const response = await ai.models.generateContent({
             model: AppConfig.gemini.modelName,
             contents: { parts },
@@ -143,7 +137,6 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
             }
         });
 
-        // 4. Manual Parsing & Validation
         const textResponse = response.text;
         if (!textResponse) throw new Error("Model boş yanıt döndürdü.");
 
@@ -159,32 +152,15 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
         console.error(`${logPrefix} Critical Error:`, error);
         console.groupEnd();
         
-        // --- USER FRIENDLY ERROR MAPPING ---
+        // Error Mapping
         let userMsg = "Analiz sırasında beklenmeyen bir hata oluştu.";
         const msg = (error.message || "").toLowerCase();
 
-        if (msg.includes("400") || msg.includes("invalid_argument")) {
-            userMsg = "Yüklenen görsel formatı desteklenmiyor veya dosya bozuk. Lütfen net bir fotoğraf (JPG/PNG) yükleyip tekrar deneyin.";
-        } else if (msg.includes("401") || msg.includes("unauthenticated")) {
-            userMsg = "Sistem yapılandırma hatası (API Key geçersiz). Lütfen yönetici ile iletişime geçin.";
-        } else if (msg.includes("403") || msg.includes("permission_denied")) {
-            userMsg = "Erişim reddedildi. Servis kullanımı kısıtlanmış olabilir.";
-        } else if (msg.includes("404") || msg.includes("not_found")) {
-            userMsg = "Yapay zeka servisine şu an ulaşılamıyor (Model Bulunamadı). Lütfen daha sonra tekrar deneyin.";
-        } else if (msg.includes("429") || msg.includes("quota") || msg.includes("resource_exhausted")) {
-            userMsg = "Sistem şu an çok yoğun. Lütfen 1 dakika bekleyip tekrar deneyin.";
-        } else if (msg.includes("500") || msg.includes("503") || msg.includes("internal")) {
-            userMsg = "Google sunucularında geçici bir sorun var. Lütfen biraz bekleyip tekrar deneyin.";
-        } else if (msg.includes("safety") || msg.includes("blocked")) {
-            userMsg = "Görsel içerik politikaları nedeniyle analiz edilemedi. Lütfen sadece eğitim materyali yüklediğinizden emin olun.";
-        } else if (msg.includes("fetch") || msg.includes("network")) {
-            userMsg = "İnternet bağlantısı kurulamadı. Lütfen ağ ayarlarınızı kontrol edin.";
-        } else if (msg.includes("json")) {
-            userMsg = "Analiz sonucu okunamadı. Görsel çok bulanık veya karmaşık olabilir.";
-        } else {
-            // Use the raw message if it's already customized (e.g. from validateConfig)
-            userMsg = error.message;
-        }
+        if (msg.includes("400")) userMsg = "Veri formatı hatası. PDF metni çok uzun veya görsel formatı bozuk olabilir.";
+        else if (msg.includes("404")) userMsg = "Model Bulunamadı (404).";
+        else if (msg.includes("429")) userMsg = "Sistem yoğun, lütfen bekleyip tekrar deneyin.";
+        else if (msg.includes("safety")) userMsg = "İçerik politikaları nedeniyle işlem durduruldu.";
+        else userMsg = error.message;
 
         throw new Error(userMsg);
     }
@@ -205,11 +181,7 @@ export const chatWithCoach = async (
     const systemInstruction = `
     Sen Kukul AI, LGS Koçusun.
     Öğrenci Adı: ${studentName}
-    
-    Öğrenci Verisi:
-    ${JSON.stringify(analysisData.executive_summary)}
-    ${JSON.stringify(analysisData.simulasyon)}
-    
+    Öğrenci Verisi: ${JSON.stringify(analysisData.executive_summary)}
     Kısa, motive edici ve emojili cevaplar ver.
     `;
 
@@ -228,6 +200,6 @@ export const chatWithCoach = async (
     return result.text || "Cevap alınamadı.";
   } catch (error) {
     console.error("Chat error:", error);
-    return "Şu an bağlantıda sorun var, biraz sonra tekrar deneyelim mi? 😔";
+    return "Bağlantı hatası, tekrar dener misin? 😔";
   }
 };
