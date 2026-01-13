@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { SYSTEM_PROMPT } from "../constants";
 import { ComprehensiveAnalysis, ChatMessage } from "../types";
@@ -174,7 +173,7 @@ export const analyzeExamFiles = async (base64DataUrls: string[]): Promise<Compre
                     puan_araligi: { type: Type.STRING },
                     gerekli_net_artisi: { 
                         type: Type.STRING, 
-                        description: "STRATEJİ: Konu analizinde en çok yanlış/boş yapılan dersleri belirle. Hedef puana ulaşmak için bu derslerden toplam kaç net arttırması gerektiğini yaz. Örn: 'Matematik: +4 Net (Üslü Sayılar), Fen: +3 Net'." 
+                        description: "STRATEJİ: Konu analizinde en çok yanlış/boş yapılan dersleri belirle. Hedef puana ulaşmak için bu derslerden toplam kaç net arttırması gerektiğini belirgin ve anlaşılır şekilde yaz. Örn: 'Matematik: +4 Net 🟢 Fen: +3 Net 🔵 Türkçe: +2 Net'." 
                     },
                     gelisim_adimlari: {
                         type: Type.ARRAY,
