@@ -939,54 +939,6 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
         {activeTab === 'ozet' && (
           <div className="animate-fade-in-up">
             
-            {/* NEW: TARGET STRATEGY CARD */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 dark:from-blue-900 dark:to-indigo-900 rounded-3xl p-6 sm:p-8 shadow-xl mb-8 relative overflow-hidden group">
-                {/* Background Effects */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none transition-transform group-hover:scale-110 duration-700"></div>
-                <div className="absolute bottom-0 left-0 w-48 h-48 bg-brand-400/20 rounded-full blur-2xl -ml-10 -mb-10 pointer-events-none"></div>
-
-                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
-                    {/* Left: Score Goal */}
-                    <div className="text-center md:text-left">
-                        <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
-                            <div className="p-2 bg-white/10 rounded-lg backdrop-blur-sm">
-                                <Target className="w-5 h-5 text-yellow-300" />
-                            </div>
-                            <h3 className="text-sm font-bold text-blue-100 tracking-wider uppercase">LGS Hedef Simülasyonu</h3>
-                        </div>
-                        <div className="flex items-baseline justify-center md:justify-start gap-2">
-                            <span className="text-5xl font-black text-white tracking-tight">{activeData.simulasyon?.hedef_puan}</span>
-                            <span className="text-lg text-blue-200 font-medium">Puan</span>
-                        </div>
-                        <p className="text-blue-200 text-sm mt-1">
-                            Mevcut durumuna göre erişilebilir potansiyel hedef ({activeData.simulasyon?.puan_araligi})
-                        </p>
-                    </div>
-
-                    {/* Right: Net Increase Strategy */}
-                    <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 flex-1 w-full max-w-2xl transform transition-transform hover:scale-[1.01]">
-                        <h4 className="flex items-center gap-2 font-bold text-white mb-4 border-b border-white/10 pb-3">
-                            <TrendingUp className="w-5 h-5 text-emerald-300" />
-                            Hedefe Ulaşmak İçin Gereken Net Artışı
-                        </h4>
-                        
-                        {/* The textual strategy from Gemini */}
-                        <div className="text-lg text-white/90 leading-relaxed font-medium">
-                            <SafeHtmlText content={activeData.simulasyon?.gerekli_net_artisi || "Yeterli veri yok."} />
-                        </div>
-                        
-                        <div className="mt-4 flex flex-wrap gap-2">
-                            <div className="px-3 py-1 rounded-lg bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 text-xs font-bold flex items-center gap-1">
-                                <CheckCircle2 className="w-3 h-3" /> Gerçekçi Hedef
-                            </div>
-                            <div className="px-3 py-1 rounded-lg bg-blue-500/20 border border-blue-400/30 text-blue-200 text-xs font-bold flex items-center gap-1">
-                                <BrainCircuit className="w-3 h-3" /> Konu Odaklı
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             {/* NEW: CRITICAL WEAKNESSES ALERT SECTION */}
             {criticalWeaknesses.length > 0 && (
                 <div className="mb-6 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 rounded-3xl p-5 shadow-sm">
@@ -1442,15 +1394,15 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                                      <div className="flex items-center justify-center gap-1">
                                                          <div className="flex flex-col items-center w-8">
                                                              <span className="text-emerald-600 font-bold">{topic.dogru}</span>
-                                                             <span className="text-9px text-slate-400">D</span>
+                                                             <span className="text-[9px] text-slate-400">D</span>
                                                          </div>
                                                          <div className="flex flex-col items-center w-8 border-x border-slate-100 dark:border-slate-700">
                                                              <span className="text-red-500 font-bold">{topic.yanlis}</span>
-                                                             <span className="text-9px text-slate-400">Y</span>
+                                                             <span className="text-[9px] text-slate-400">Y</span>
                                                          </div>
                                                          <div className="flex flex-col items-center w-8">
                                                              <span className="text-slate-400 font-bold">{topic.bos}</span>
-                                                             <span className="text-9px text-slate-400">B</span>
+                                                             <span className="text-[9px] text-slate-400">B</span>
                                                          </div>
                                                      </div>
                                                  </td>
@@ -1459,7 +1411,7 @@ const AnalysisDashboard: React.FC<Props> = ({ data, history, onReset, onSelectHi
                                                         <span className="text-amber-600 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded text-xs">
                                                             -{((topic.yanlis || 0) / 3).toFixed(2)}
                                                         </span>
-                                                        <span className="text-9px text-slate-400 mt-0.5">Net</span>
+                                                        <span className="text-[9px] text-slate-400 mt-0.5">Net</span>
                                                     </div>
                                                  </td>
                                                  <td className="px-6 py-4 text-center">

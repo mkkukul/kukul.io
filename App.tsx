@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import FileUpload from './components/FileUpload';
 import AnalysisDashboard from './components/AnalysisDashboard';
@@ -77,6 +76,7 @@ const App: React.FC = () => {
           
           // OPTIMIZATION for SPEED: 
           // 1280px is a good balance for speed vs OCR accuracy. 
+          // Previous settings were safer but slower. 1280px drastically reduces tokens/bandwidth.
           const MAX_DIMENSION = 1280;
 
           if (width > height) {
@@ -109,11 +109,12 @@ const App: React.FC = () => {
           }
           
           // OPTIMIZATION: 0.4 quality reduces file size further
+          // This improves upload and processing speed significantly.
           resolve(canvas.toDataURL('image/jpeg', 0.4));
         };
-        img.onerror = () => reject(new Error("Görsel işlenirken hata oluştu. Dosya bozuk olabilir."));
+        img.onerror = (err) => reject(err);
       };
-      reader.onerror = () => reject(new Error("Dosya okunamadı."));
+      reader.onerror = (err) => reject(err);
     });
   };
 
@@ -122,7 +123,7 @@ const App: React.FC = () => {
           const reader = new FileReader();
           reader.readAsDataURL(file);
           reader.onload = () => resolve(reader.result as string);
-          reader.onerror = () => reject(new Error("Dosya okunamadı."));
+          reader.onerror = reject;
       });
   };
 
@@ -132,12 +133,14 @@ const App: React.FC = () => {
 
     try {
       const base64Promises = files.map(async (file) => {
-        // Robust check for images
+        // Robust check for images: Check MIME type OR file extension
+        // Mobile browsers sometimes have empty types for certain files
         const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|heic|webp)$/i.test(file.name);
         
         if (isImage) {
             return await compressImage(file);
         } else {
+            // PDFs and other text-based formats are read directly. Gemini handles PDF data efficiently.
             return await readFileAsBase64(file);
         }
       });
@@ -165,6 +168,11 @@ const App: React.FC = () => {
       // Extensive logging for debugging in production
       console.error("--- APPLICATION ERROR DETECTED ---");
       console.error("User Message:", err.message);
+      console.error("Stack Trace:", err.stack);
+      
+      if (err.cause) {
+         console.error("Underlying Cause:", err.cause);
+      }
       
       // Use the specific error message from the service
       setError(err.message || "Analiz sırasında beklenmeyen bir sorun oluştu.");
@@ -181,6 +189,7 @@ const App: React.FC = () => {
   const handleSelectFromHistory = (analysis: ComprehensiveAnalysis) => {
     setResult(analysis);
     setAppState(AppState.SUCCESS);
+    // Optional: Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -283,7 +292,7 @@ const App: React.FC = () => {
         <footer className="py-6 text-center text-slate-400 dark:text-slate-600 text-sm">
           <div className="flex flex-col gap-1">
             <p>Bu Uygulama Beta Test Aşamasındadır.</p>
-            <p>© 2026 Kukul.io Beta 0.62 sürümüdür.</p>
+            <p>© 2026 Kukul.io Beta 0.61 sürümüdür.</p>
           </div>
         </footer>
 
