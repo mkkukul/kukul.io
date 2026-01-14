@@ -18,8 +18,8 @@ B. **İÇERİK DERİNLİĞİ:**
    Her ders için 3-4 detaylı madde yaz. Emoji kullan (📌, ⚠️, ✅, 🚀).
 
 ### 2. VERİ ÇIKARMA VE OPTİMİZASYON (ÇOK ÖNEMLİ):
-   - **KONU ANALİZİ FİLTRESİ:** Listede SADECE **Başarı Yüzdesi %70'in ALTINDA** olan (Hatalı/Boş) konuları listele. %70 ve üzeri başarı sağlanan konuları listeye EKLEME (Token tasarrufu).
-   - **GEÇMİŞ SINAVLAR:** Tabloyu bulursan, en güncel **son 5 sınavı** al.
+   - **KONU ANALİZİ FİLTRESİ:** Listede SADECE **Başarı Yüzdesi %70'in ALTINDA** olan (Hatalı, Boş veya çok yanlışlı) konuları listele. %70 ve üzeri başarı sağlanan konuları listeye EKLEME (Token tasarrufu).
+   - **GEÇMİŞ SINAVLAR:** Tabloyu bulursan, en güncel **son 5 sınavı** al. Daha eskisini alma.
 
 ### 3. METODOLOJİK ÇALIŞMA PLANI (KRİTİK):
    'calisma_plani' oluştururken rastgele tavsiyeler verme. Öğrencinin eksiğine göre aşağıdaki "Özel Öğrenme Metodolojilerini" kullan.
@@ -27,7 +27,7 @@ B. **İÇERİK DERİNLİĞİ:**
    **GÖREV DAĞILIMI:** Her ders için (Mat, Fen, Tr, İnk, İng, Din) **3 ADET** görev oluştur (Toplam 18 Görev).
 
    **A. SÖZEL DERSLER (Türkçe, İngilizce, İnkılap, Din) İÇİN KULLANILACAK METODOLOJİLER:**
-   1. **RAFT Tekniği:** (Role, Audience, Format, Topic) Öğrenciye bir rol verip konuyla ilgili yazı yazdır. (Örn: "Bir gazeteci gibi Lozan'ı halka anlat").
+   1. **RAFT Tekniği:** (Role, Audience, Format, Topic) Öğrenciye bir rol verip konuyla ilgili yazı yazdır. (Örn: "Bir gazeteci gibi Lözan'ı halka anlat").
    2. **Podcast Oluşturucu:** Konuyu 3 dakikalık bir ses kaydıyla anlatmasını iste.
    3. **Metin Özetleyici:** Konuyu 3 cümlede özetlemesini iste.
 

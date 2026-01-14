@@ -35,7 +35,7 @@ const App: React.FC = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
 
-  // Load history
+  // Load history from local storage on mount
   useEffect(() => {
     try {
       const savedHistory = localStorage.getItem('exam_analysis_history');
@@ -47,7 +47,7 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Save history
+  // Save history to local storage whenever it changes
   const saveHistoryToStorage = (newHistory: ComprehensiveAnalysis[]) => {
     try {
       localStorage.setItem('exam_analysis_history', JSON.stringify(newHistory));
@@ -67,7 +67,7 @@ const App: React.FC = () => {
     setError(null);
 
     try {
-      // Doğrudan servise gönder (işleme FileUpload içinde yapıldı)
+      // Direct call to analysis service - processing is now handled in FileUpload
       const data = await analyzeExamFiles(payload);
       
       // Add ID and Timestamp
@@ -79,15 +79,18 @@ const App: React.FC = () => {
 
       setResult(analysisWithMeta);
       
+      // Update History
       const updatedHistory = [analysisWithMeta, ...history];
       saveHistoryToStorage(updatedHistory);
 
       setAppState(AppState.SUCCESS);
 
     } catch (err: any) {
+      // Extensive logging for debugging in production
       console.error("--- APPLICATION ERROR DETECTED ---");
       console.error("User Message:", err.message);
       
+      // Use the specific error message from the service
       setError(err.message || "Analiz sırasında beklenmeyen bir sorun oluştu.");
       setAppState(AppState.ERROR);
     }
@@ -102,6 +105,7 @@ const App: React.FC = () => {
   const handleSelectFromHistory = (analysis: ComprehensiveAnalysis) => {
     setResult(analysis);
     setAppState(AppState.SUCCESS);
+    // Optional: Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
