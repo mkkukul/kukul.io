@@ -119,7 +119,7 @@ export const analyzeExamFiles = async (payload: AnalysisPayload | string[]): Pro
             },
             exams_history: {
                 type: Type.ARRAY,
-                description: "Belgedeki 'Sınav Listesi' veya 'Geçmiş Sınavlar' tablosunu bul. En güncel 10 sınavı ekle (fazlasını alma).",
+                description: "Belgedeki 'Sınav Listesi' veya 'Geçmiş Sınavlar' tablosunu bul. Sadece EN GÜNCEL 5 sınavı ekle (fazlasını alma).",
                 items: {
                     type: Type.OBJECT,
                     properties: {
@@ -142,7 +142,7 @@ export const analyzeExamFiles = async (payload: AnalysisPayload | string[]): Pro
             },
             konu_analizi: {
                 type: Type.ARRAY,
-                description: "DİKKAT: Sadece öğrencinin YANLIŞ veya BOŞ yaptığı konuları ve Başarısı <%100 olanları listele. Tam puan (Full) çekilen konuları listeye EKLEME. Bu liste sadece eksikleri göstermelidir.",
+                description: "DİKKAT: Sadece öğrencinin YANLIŞ veya BOŞ yaptığı veya başarı yüzdesi %70'in altında olan konuları listele. Başarılı konuları LİSTELEME.",
                 items: {
                     type: Type.OBJECT,
                     properties: {
@@ -168,9 +168,10 @@ export const analyzeExamFiles = async (payload: AnalysisPayload | string[]): Pro
                         sebep: { type: Type.STRING },
                         tavsiye: { type: Type.STRING },
                         oncelik: { type: Type.NUMBER },
-                        onem_derecesi: { type: Type.NUMBER }
+                        onem_derecesi: { type: Type.NUMBER },
+                        gorev_tipi: { type: Type.STRING, description: "Kullanılan metodoloji adı (RAFT, 4MAT vb.)" }
                     },
-                    required: ["konu", "tavsiye", "oncelik", "sebep", "onem_derecesi"]
+                    required: ["konu", "tavsiye", "oncelik", "sebep", "onem_derecesi", "gorev_tipi"]
                 }
             },
             simulasyon: {

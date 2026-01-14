@@ -74,7 +74,8 @@ const FileUpload: React.FC<Props> = ({ onFilesSelected, isLoading }) => {
           const canvas = document.createElement('canvas');
           let width = img.width;
           let height = img.height;
-          const MAX_DIMENSION = 1280;
+          // SPEED OPTIMIZATION: Reduced max dimension to 1024px
+          const MAX_DIMENSION = 1024;
 
           if (width > height) {
             if (width > MAX_DIMENSION) {
@@ -98,7 +99,8 @@ const FileUpload: React.FC<Props> = ({ onFilesSelected, isLoading }) => {
              ctx.fillRect(0, 0, width, height);
              ctx.drawImage(img, 0, 0, width, height);
           }
-          resolve(canvas.toDataURL('image/jpeg', 0.4));
+          // SPEED OPTIMIZATION: Reduced quality to 0.3
+          resolve(canvas.toDataURL('image/jpeg', 0.3));
         };
         img.onerror = () => reject(new Error("Görsel işlenemedi."));
       };

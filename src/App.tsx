@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import FileUpload from './components/FileUpload';
 import AnalysisDashboard from './components/AnalysisDashboard';
@@ -61,7 +62,6 @@ const App: React.FC = () => {
     saveHistoryToStorage(updatedHistory);
   };
 
-  // GÜNCELLENMİŞ: Artık File[] değil, işlenmiş {images, text} payload'ı alıyor
   const handleFilesSelected = useCallback(async (payload: AnalysisPayload) => {
     setAppState(AppState.ANALYZING);
     setError(null);
@@ -202,7 +202,7 @@ const App: React.FC = () => {
         <footer className="py-6 text-center text-slate-400 dark:text-slate-600 text-sm">
           <div className="flex flex-col gap-1">
             <p>Bu Uygulama Beta Test Aşamasındadır.</p>
-            <p>© 2026 Kukul.io Beta 0.62 (Hybrid Engine) sürümüdür.</p>
+            <p>© 2026 Kukul.io Beta 0.63 (Fast Engine) sürümüdür.</p>
           </div>
         </footer>
 
